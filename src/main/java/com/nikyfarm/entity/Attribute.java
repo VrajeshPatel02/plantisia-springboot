@@ -9,10 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "attributes",
-indexes = {
-        @Index(name = "", columnList = "")
-})
+@Table(name = "attributes")
 public class Attribute {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

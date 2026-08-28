@@ -1,0 +1,7 @@
+package com.nikyfarm.repository;
+
+import com.nikyfarm.entity.Wishlist;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
+}
