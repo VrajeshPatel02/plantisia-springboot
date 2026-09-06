@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments/head :: head((${isEdit} ? 'Edit' : 'New') + ' Attribute Value')}"></head>
+<body>
+<nav th:replace="~{admin/fragments/nav :: nav}"></nav>
+<div class="container">
+    <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
+    <p><a th:href="@{'/admin/products/' + ${product.id} + '/attribute-values'}">&larr; Back to Attribute Values</a></p>
+    <h1 class="mb-4" th:text="(${isEdit} ? 'Edit' : 'New') + ' Attribute Value for ' + ${product.slug}"></h1>
+
+    <div th:if="${#lists.isEmpty(attributes)}" class="alert alert-warning">
+        This product's category has no attributes defined yet.
+        <a th:href="@{'/admin/attributes/new'}">Create one</a> first.
+    </div>
+
+    <form th:unless="${#lists.isEmpty(attributes)}"
+          th:action="@{${formAction}}" th:object="${value}" method="post" class="row g-3">
+
+        <div class="col-md-6">
+            <label class="form-label">Attribute</label>
+            <select class="form-select" id="attributeSelect" th:field="*{attributeId}"
+                    th:classappend="${#fields.hasErrors('attributeId')} ? 'is-invalid' : _">
+                <option value="">-- Select an attribute --</option>
+                <option th:each="attr : ${attributes}" th:value="${attr.id}"
+                        th:text="${attr.name} + ' (' + ${attr.inputType} + ')'"></option>
+            </select>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('attributeId')}" th:errors="*{attributeId}"></div>
+        </div>
+
+        <div class="col-md-6" id="valueTextGroup">
+            <label class="form-label">Value</label>
+            <input type="text" class="form-control" id="valueTextInput" th:field="*{valueText}"
+                   th:classappend="${#fields.hasErrors('valueText')} ? 'is-invalid' : _">
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('valueText')}" th:errors="*{valueText}"></div>
+        </div>
+
+        <div class="col-md-6" id="optionGroup" style="display:none;">
+            <label class="form-label">Option</label>
+            <select class="form-select" id="optionSelect" th:field="*{attributeOptionsId}">
+                <option value="">-- Select an option --</option>
+            </select>
+        </div>
+
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a th:href="@{'/admin/products/' + ${product.id} + '/attribute-values'}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var attributeMeta = /*[[${attributeMetaJson}]]*/ {};
+    var currentOptionId = /*[[${value.attributeOptionsId}]]*/ null;
+    /*]]>*/
+
+    var attributeSelect = document.getElementById('attributeSelect');
+    var optionSelect = document.getElementById('optionSelect');
+    var valueTextGroup = document.getElementById('valueTextGroup');
+    var optionGroup = document.getElementById('optionGroup');
+
+    function refreshAttributeValueForm() {
+        var meta = attributeMeta[attributeSelect.value];
+        var isSelect = !!meta && meta.inputType === 'SELECT';
+
+        valueTextGroup.style.display = isSelect ? 'none' : '';
+        optionGroup.style.display = isSelect ? '' : 'none';
+
+        optionSelect.innerHTML = '';
+        var placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '-- Select an option --';
+        optionSelect.appendChild(placeholder);
+
+        if (isSelect && meta.options) {
+            meta.options.forEach(function (opt) {
+                var el = document.createElement('option');
+                el.value = opt.id;
+                el.textContent = opt.value;
+                if (currentOptionId !== null && String(opt.id) === String(currentOptionId)) {
+                    el.selected = true;
+                }
+                optionSelect.appendChild(el);
+            });
+        }
+    }
+
+    if (attributeSelect) {
+        attributeSelect.addEventListener('change', refreshAttributeValueForm);
+        refreshAttributeValueForm();
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

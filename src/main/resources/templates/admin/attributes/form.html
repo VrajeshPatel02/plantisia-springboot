@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments/head :: head(${isEdit} ? 'Edit Attribute' : 'New Attribute')}"></head>
+<body>
+<nav th:replace="~{admin/fragments/nav :: nav}"></nav>
+<div class="container">
+    <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
+    <h1 class="mb-4" th:text="${isEdit} ? 'Edit Attribute' : 'New Attribute'"></h1>
+
+    <form th:action="@{${formAction}}" th:object="${attribute}" method="post" class="row g-3">
+
+        <div class="col-md-6">
+            <label class="form-label">Name</label>
+            <input type="text" class="form-control" th:field="*{name}"
+                   th:classappend="${#fields.hasErrors('name')} ? 'is-invalid' : _">
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Category</label>
+            <select class="form-select" th:field="*{categoryId}"
+                    th:classappend="${#fields.hasErrors('categoryId')} ? 'is-invalid' : _">
+                <option value="">-- Select a category --</option>
+                <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}"></option>
+            </select>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('categoryId')}" th:errors="*{categoryId}"></div>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Input Type</label>
+            <select class="form-select" th:field="*{inputType}"
+                    th:classappend="${#fields.hasErrors('inputType')} ? 'is-invalid' : _">
+                <option value="">-- Select an input type --</option>
+                <option th:each="type : ${inputTypes}" th:value="${type}" th:text="${type}"></option>
+            </select>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('inputType')}" th:errors="*{inputType}"></div>
+            <div class="form-text">SELECT means the value is picked from a list of options you manage separately.</div>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Unit</label>
+            <input type="text" class="form-control" placeholder="e.g. cm, kg" th:field="*{unit}"
+                   th:classappend="${#fields.hasErrors('unit')} ? 'is-invalid' : _">
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('unit')}" th:errors="*{unit}"></div>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Sort Order</label>
+            <input type="number" class="form-control" th:field="*{sortOrder}"
+                   th:classappend="${#fields.hasErrors('sortOrder')} ? 'is-invalid' : _">
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('sortOrder')}" th:errors="*{sortOrder}"></div>
+        </div>
+
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="/admin/attributes" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

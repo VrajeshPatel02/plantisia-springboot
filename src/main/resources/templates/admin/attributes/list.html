@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments/head :: head('Attributes')}"></head>
+<body>
+<nav th:replace="~{admin/fragments/nav :: nav}"></nav>
+<div class="container">
+    <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Attributes</h1>
+        <a href="/admin/attributes/new" class="btn btn-success"><i class="bi bi-plus-lg"></i> New Attribute</a>
+    </div>
+
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-auto">
+            <select name="categoryId" class="form-select" onchange="this.form.submit()">
+                <option value="">All categories</option>
+                <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}"
+                        th:selected="${selectedCategoryId != null and selectedCategoryId == c.id}"></option>
+            </select>
+        </div>
+    </form>
+
+    <table class="table table-striped table-hover align-middle bg-white">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Input Type</th>
+            <th>Unit</th>
+            <th>Sort Order</th>
+            <th>Options</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="attribute : ${attributes}">
+            <td th:text="${attribute.id}"></td>
+            <td th:text="${attribute.name}"></td>
+            <td th:text="${attribute.categoryName}"></td>
+            <td><span class="badge bg-info text-dark" th:text="${attribute.inputType}"></span></td>
+            <td th:text="${attribute.unit != null ? attribute.unit : '-'}"></td>
+            <td th:text="${attribute.sortOrder}"></td>
+            <td>
+                <a th:href="@{'/admin/attributes/' + ${attribute.id} + '/options'}" th:text="${attribute.optionCount} + ' option(s)'"></a>
+            </td>
+            <td class="text-end">
+                <a th:href="@{'/admin/attributes/' + ${attribute.id} + '/edit'}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                <form th:action="@{'/admin/attributes/' + ${attribute.id} + '/delete'}" method="post" class="d-inline"
+                      onsubmit="return confirm('Delete this attribute?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(attributes)}">
+            <td colspan="8" class="text-center text-muted py-4">No attributes yet.</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

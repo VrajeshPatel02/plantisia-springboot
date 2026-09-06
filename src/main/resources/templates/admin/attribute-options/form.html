@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments/head :: head((${isEdit} ? 'Edit' : 'New') + ' Option')}"></head>
+<body>
+<nav th:replace="~{admin/fragments/nav :: nav}"></nav>
+<div class="container">
+    <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
+    <p><a th:href="@{'/admin/attributes/' + ${attribute.id} + '/options'}">&larr; Back to Options</a></p>
+    <h1 class="mb-4" th:text="(${isEdit} ? 'Edit' : 'New') + ' Option for ' + ${attribute.name}"></h1>
+
+    <form th:action="@{${formAction}}" th:object="${option}" method="post" class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label">Value</label>
+            <input type="text" class="form-control" th:field="*{value}"
+                   th:classappend="${#fields.hasErrors('value')} ? 'is-invalid' : _">
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('value')}" th:errors="*{value}"></div>
+        </div>
+
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a th:href="@{'/admin/attributes/' + ${attribute.id} + '/options'}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

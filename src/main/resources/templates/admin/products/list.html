@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments/head :: head('Products')}"></head>
+<body>
+<nav th:replace="~{admin/fragments/nav :: nav}"></nav>
+<div class="container">
+    <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Products</h1>
+        <a href="/admin/products/new" class="btn btn-success"><i class="bi bi-plus-lg"></i> New Product</a>
+    </div>
+    <table class="table table-striped table-hover align-middle bg-white">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>Image</th>
+            <th>Name</th>
+            <th>Slug</th>
+            <th>Category</th>
+            <th>Base Price</th>
+            <th>Discounted</th>
+            <th>Variants</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="product : ${products.content}">
+            <td th:text="${product.id}"></td>
+            <td>
+                <img th:if="${product.primaryImageUrl}" th:src="${product.primaryImageUrl}" alt=""
+                     style="height:40px;width:40px;object-fit:cover;border-radius:4px;">
+                <span th:unless="${product.primaryImageUrl}" class="text-muted">&mdash;</span>
+            </td>
+            <td th:text="${product.name != null ? product.name : '-'}"></td>
+            <td th:text="${product.slug}"></td>
+            <td th:text="${product.categoryName}"></td>
+            <td th:text="${'₹' + product.basePrice}"></td>
+            <td th:text="${product.discountedPrice != null ? '₹' + product.discountedPrice : '-'}"></td>
+            <td>
+                <span th:if="${product.variantCount == 0}" class="badge bg-warning text-dark" title="Every product should have at least one variant">
+                    None yet
+                </span>
+                <span th:unless="${product.variantCount == 0}" th:text="${product.variantCount}"></span>
+            </td>
+            <td>
+                <span th:if="${product.isActive}" class="badge bg-success">Active</span>
+                <span th:unless="${product.isActive}" class="badge bg-secondary">Inactive</span>
+            </td>
+            <td class="text-end">
+                <a th:href="@{'/admin/products/' + ${product.id} + '/variants'}" class="btn btn-sm btn-outline-dark">Variants</a>
+                <a th:href="@{'/admin/products/' + ${product.id} + '/images'}" class="btn btn-sm btn-outline-dark">General Images</a>
+                <a th:href="@{'/admin/products/' + ${product.id} + '/attribute-values'}" class="btn btn-sm btn-outline-dark">Attributes</a>
+                <a th:href="@{'/admin/products/' + ${product.id} + '/edit'}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                <form th:action="@{'/admin/products/' + ${product.id} + '/delete'}" method="post" class="d-inline"
+                      onsubmit="return confirm('Delete this product? This also deletes its variants and images.');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+            </td>
+        </tr>
+        <tr th:if="${products.empty}">
+            <td colspan="10" class="text-center text-muted py-4">No products yet.</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <nav th:if="${products.totalPages > 1}" aria-label="Product pages">
+        <ul class="pagination">
+            <li class="page-item" th:each="i : ${#numbers.sequence(0, products.totalPages - 1)}"
+                th:classappend="${i == products.number} ? 'active' : _">
+                <a class="page-link" th:href="@{/admin/products(page=${i})}" th:text="${i + 1}"></a>
+            </li>
+        </ul>
+    </nav>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

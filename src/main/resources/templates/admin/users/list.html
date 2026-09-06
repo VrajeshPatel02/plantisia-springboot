@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments/head :: head('Users')}"></head>
+<body>
+<nav th:replace="~{admin/fragments/nav :: nav}"></nav>
+<div class="container">
+    <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
+    <h1 class="mb-4">Users</h1>
+    <table class="table table-striped table-hover align-middle bg-white">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Joined</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="user : ${users}">
+            <td th:text="${user.id}"></td>
+            <td th:text="${user.name}"></td>
+            <td th:text="${user.email}"></td>
+            <td>
+                <span class="badge" th:classappend="${user.role.name() == 'ADMIN'} ? 'bg-clay' : 'bg-secondary'"
+                      th:text="${user.role}"></span>
+            </td>
+            <td>
+                <span th:if="${user.isActive}" class="badge bg-success">Active</span>
+                <span th:unless="${user.isActive}" class="badge bg-secondary">Deactivated</span>
+            </td>
+            <td th:text="${#temporals.format(user.createdAt, 'yyyy-MM-dd')}"></td>
+            <td class="text-end">
+                <a th:href="@{'/admin/wishlist'(userId=${user.id})}" class="btn btn-sm btn-outline-dark">Wishlist</a>
+                <a th:href="@{'/admin/cart-items'(userId=${user.id})}" class="btn btn-sm btn-outline-dark">Cart</a>
+                <a th:href="@{'/admin/users/' + ${user.id} + '/edit'}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                <form th:action="@{'/admin/users/' + ${user.id} + '/delete'}" method="post" class="d-inline"
+                      onsubmit="return confirm('Delete this user? This cannot be undone.');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(users)}">
+            <td colspan="7" class="text-center text-muted py-4">No users yet.</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments/head :: head('Attribute Values - ' + ${product.slug})}"></head>
+<body>
+<nav th:replace="~{admin/fragments/nav :: nav}"></nav>
+<div class="container">
+    <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
+    <p><a href="/admin/products">&larr; Back to Products</a></p>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Attribute Values for <span th:text="${product.slug}"></span></h1>
+        <a th:href="@{'/admin/products/' + ${product.id} + '/attribute-values/new'}" class="btn btn-success">
+            <i class="bi bi-plus-lg"></i> Assign Attribute
+        </a>
+    </div>
+    <table class="table table-striped table-hover align-middle bg-white">
+        <thead>
+        <tr>
+            <th>Attribute</th>
+            <th>Input Type</th>
+            <th>Value</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="value : ${values}">
+            <td th:text="${value.attributeName}"></td>
+            <td><span class="badge bg-info text-dark" th:text="${value.inputType}"></span></td>
+            <td th:text="${value.attributeOptionValue != null ? value.attributeOptionValue : value.valueText}"></td>
+            <td class="text-end">
+                <a th:href="@{'/admin/products/' + ${product.id} + '/attribute-values/' + ${value.id} + '/edit'}"
+                   class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                <form th:action="@{'/admin/products/' + ${product.id} + '/attribute-values/' + ${value.id} + '/delete'}"
+                      method="post" class="d-inline" onsubmit="return confirm('Remove this attribute value?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(values)}">
+            <td colspan="4" class="text-center text-muted py-4">No attribute values assigned yet.</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

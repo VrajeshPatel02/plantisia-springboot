@@ -1,0 +1,169 @@
+/*
+ * Nikyfarm Admin — a grounded, nursery-ledger feel for a plant/farm catalog backend,
+ * not a generic SaaS dashboard. Deliberately: no card shadows, no fully-rounded
+ * corners, no ALL-CAPS labels, a single accent color used sparingly (clay), and a
+ * serif reserved for headings only.
+ */
+
+:root {
+    --color-moss: #2f3b2e;
+    --color-bark: #6b4f3b;
+    --color-clay: #c97b4a;
+    --color-clay-dark: #a85f34;
+    --color-parchment: #f7f3ec;
+    --color-ink: #232420;
+    --color-sage: #8fa084;
+    --color-sage-light: #dde3d8;
+
+    /* Reskin Bootstrap 5.3's own CSS custom properties -- most components already
+       reference these, so this cascades through buttons/badges/alerts/links without
+       needing to override every utility class individually. */
+    --bs-primary: var(--color-moss);
+    --bs-primary-rgb: 47, 59, 46;
+    --bs-secondary: var(--color-bark);
+    --bs-secondary-rgb: 107, 79, 59;
+    --bs-success: var(--color-clay);
+    --bs-success-rgb: 201, 123, 74;
+    --bs-body-bg: var(--color-parchment);
+    --bs-body-color: var(--color-ink);
+    --bs-border-color: var(--color-sage);
+    --bs-link-color: var(--color-clay-dark);
+    --bs-link-hover-color: var(--color-bark);
+    --bs-border-radius: 4px;
+    --bs-border-radius-sm: 3px;
+    --bs-border-radius-lg: 4px;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--color-parchment);
+    color: var(--color-ink);
+}
+
+h1, h2, h3, h4, h5, .navbar-brand {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+h1 {
+    font-size: 1.75rem;
+    margin-bottom: 1.25rem;
+}
+
+a {
+    text-decoration: none;
+}
+
+/* Navbar */
+.navbar {
+    background-color: var(--color-moss) !important;
+    box-shadow: none;
+    border-bottom: 2px solid var(--color-clay);
+}
+
+.navbar .navbar-brand,
+.navbar .nav-link {
+    color: var(--color-parchment) !important;
+    opacity: 0.9;
+}
+
+.navbar .nav-link:hover {
+    color: var(--color-clay) !important;
+    opacity: 1;
+}
+
+/* Cards -- flat panel, hairline border, no shadow */
+.card {
+    border: 1px solid var(--color-sage);
+    border-radius: var(--bs-border-radius);
+    box-shadow: none;
+}
+
+/* Tables -- ledger feel: bordered, moss header, no zebra shadow */
+.table {
+    border: 1px solid var(--color-sage);
+    background-color: #fff;
+}
+
+.table > :not(caption) > * > * {
+    border-bottom-color: var(--color-sage-light);
+}
+
+.table thead {
+    background-color: var(--color-moss);
+}
+
+.table thead th {
+    color: var(--color-ink);
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    border-color: var(--color-moss);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: var(--color-sage-light);
+    --bs-table-accent-bg: var(--color-sage-light);
+}
+
+/* Buttons -- squared-off, no default Bootstrap blue */
+.btn {
+    border-radius: var(--bs-border-radius-sm);
+    font-weight: 500;
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--color-moss);
+    --bs-btn-border-color: var(--color-moss);
+    --bs-btn-hover-bg: var(--color-moss);
+    --bs-btn-hover-border-color: var(--color-moss);
+}
+
+.btn-outline-dark {
+    --bs-btn-color: var(--color-bark);
+    --bs-btn-border-color: var(--color-bark);
+    --bs-btn-hover-bg: var(--color-bark);
+    --bs-btn-hover-border-color: var(--color-bark);
+}
+
+.btn-success {
+    --bs-btn-bg: var(--color-clay);
+    --bs-btn-border-color: var(--color-clay);
+    --bs-btn-hover-bg: var(--color-clay-dark);
+    --bs-btn-hover-border-color: var(--color-clay-dark);
+}
+
+/* Badges */
+.badge.bg-clay {
+    background-color: var(--color-clay) !important;
+    color: #fff;
+}
+
+/* Forms */
+.form-control,
+.form-select {
+    border-radius: var(--bs-border-radius-sm);
+    border-color: var(--color-sage);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--color-clay);
+    box-shadow: 0 0 0 0.2rem rgba(201, 123, 74, 0.25);
+}
+
+.form-check-input:checked {
+    background-color: var(--color-moss);
+    border-color: var(--color-moss);
+}
+
+/* Alerts */
+.alert-info {
+    background-color: var(--color-sage-light);
+    border-color: var(--color-sage);
+    color: var(--color-ink);
+}
+
+.table img {
+    display: block;
+}

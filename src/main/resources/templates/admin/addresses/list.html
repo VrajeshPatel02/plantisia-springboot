@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments/head :: head('User Addresses')}"></head>
+<body>
+<nav th:replace="~{admin/fragments/nav :: nav}"></nav>
+<div class="container">
+    <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
+
+    <h1 class="mb-4">User Addresses</h1>
+
+    <!-- Filter Bar -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form th:action="@{/admin/addresses}" method="get" class="row g-3 align-items-center">
+                <div class="col-auto">
+                    <label for="userIdInput" class="col-form-label fw-bold">Filter by User ID:</label>
+                </div>
+                <div class="col-auto">
+                    <input type="number" id="userIdInput" name="userId" class="form-control"
+                           placeholder="Enter User ID" th:value="${selectedUserId}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-secondary">Filter</button>
+                    <a th:if="${selectedUserId != null}" href="/admin/addresses" class="btn btn-outline-secondary">Clear Filter</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div th:if="${selectedUserId != null}" class="alert alert-info">
+        Showing addresses for User ID: <strong th:text="${selectedUserId}"></strong>
+    </div>
+
+    <table class="table table-striped table-hover align-middle bg-white">
+        <thead>
+        <tr>
+            <th>User ID</th>
+            <th>Default</th>
+            <th>Recipient</th>
+            <th>Phone</th>
+            <th>Address Details</th>
+            <th>City / State</th>
+            <th>Postal Code</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="addr : ${addresses}">
+            <td>
+                <a th:href="@{/admin/addresses(userId=${addr.userId})}" th:text="${addr.userId}" class="fw-bold"></a>
+            </td>
+            <td>
+                <span th:if="${addr.isDefault}" class="badge bg-success">Default</span>
+                <span th:unless="${addr.isDefault}" class="text-muted">&mdash;</span>
+            </td>
+            <td class="fw-bold" th:text="${addr.fullName}"></td>
+            <td th:text="${addr.phone}"></td>
+            <td>
+                <div th:text="${addr.line1}"></div>
+                <small class="text-muted" th:if="${addr.line2}" th:text="${addr.line2}"></small>
+            </td>
+            <td th:text="${addr.city + ', ' + addr.state}"></td>
+            <td th:text="${addr.postalCode}"></td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(addresses)}">
+            <td colspan="7" class="text-center text-muted py-4">
+                <span th:if="${selectedUserId == null}">No addresses found in the system.</span>
+                <span th:if="${selectedUserId != null}">No addresses found for this user.</span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- Pagination Controls (Only rendered when viewing overall paginated list) -->
+    <nav th:if="${isPaginated and totalPages > 1}" aria-label="Address list navigation" class="d-flex justify-content-between align-items-center mt-3">
+        <span class="text-muted small" th:text="'Showing page ' + (${currentPage} + 1) + ' of ' + ${totalPages} + ' (' + ${totalItems} + ' total items)'"></span>
+        <ul class="pagination mb-0">
+            <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                <a class="page-link" th:href="@{/admin/addresses(page=${currentPage - 1})}">Previous</a>
+            </li>
+            <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                th:classappend="${i == currentPage} ? 'active'">
+                <a class="page-link" th:href="@{/admin/addresses(page=${i})}" th:text="${i + 1}"></a>
+            </li>
+            <li class="page-item" th:classappend="${currentPage + 1 == totalPages} ? 'disabled'">
+                <a class="page-link" th:href="@{/admin/addresses(page=${currentPage + 1})}">Next</a>
+            </li>
+        </ul>
+    </nav>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
