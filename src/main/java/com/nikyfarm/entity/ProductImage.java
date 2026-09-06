@@ -11,18 +11,26 @@ import lombok.Setter;
 @Entity
 @Table(name = "product_images",
         indexes = {
-                @Index(name = "idx_product_images_product", columnList = "product_id")
+                @Index(name = "idx_product_images_product", columnList = "product_id"),
+                @Index(name = "idx_product_images_variant", columnList = "product_variant_id")
         })
 public class ProductImage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "product_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @Column(name = "image_url")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_variant_id")
+    private ProductVariant variant;
+
+    @Column(name = "public_id")
+    private String publicId;
+
+    @Column(name = "image_url", nullable = false, columnDefinition = "TEXT")
     private String imageUrl;
 
     @Column(name = "alt_text")
@@ -33,5 +41,4 @@ public class ProductImage {
 
     @Column(name = "is_primary")
     private Boolean isPrimary;
-
 }

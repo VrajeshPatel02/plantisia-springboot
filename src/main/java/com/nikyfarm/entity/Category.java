@@ -39,7 +39,13 @@ public class Category {
     @Column(nullable = false, unique = true, length = 160)
     private String slug;
 
+    @Column(name = "image_url")
     private String imageUrl;
+
+    @Column(name = "image_public_id")
+    private String imagePublicId;
+
+    @Column(name = "description")
     private String description;
 
     @Column(name = "sort_order")
