@@ -7,10 +7,10 @@ import lombok.Data;
 @Data
 public class CartItemRequestDto {
 
-    @NotNull(message = "Product variant id is required")
+    @NotNull(message = "productVariantId is required")
     private Long productVariantId;
 
-    @NotNull(message = "Quantity is required")
-    @Min(value = 1, message = "Quantity must be at least 1")
+    @NotNull(message = "quantity is required")
+    @Min(value = 1, message = "quantity must be at least 1")
     private Integer quantity;
 }

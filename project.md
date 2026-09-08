@@ -1,6 +1,6 @@
 # Nikyfarm — E-Commerce Backend
 
-Reference documentation for the codebase. Last updated: 2026-09-04.
+Reference documentation for the codebase. Last updated: 2026-09-09.
 
 ## Overview
 
@@ -8,10 +8,9 @@ Spring Boot REST backend for an e-commerce platform (`com.niky:nikyfarm`). Cover
 product catalog (categories, products, variants, attributes, images), plus accounts,
 reviews, wishlist and cart. Category, Product, ProductVariant, Attribute,
 AttributeOptions, ProductAttributeValue, User, Reviews, ReviewImage, Wishlist and
-CartItems now all have full service/controller/DTO layers (see "Catalog Module",
+Cart/CartItem now all have full service/controller/DTO layers (see "Catalog Module",
 "Attributes (EAV) Module" and "Accounts, Reviews, Wishlist & Cart Module" below), secured
-by real JWT authentication (see "Security"). Orders, Payments, Coupons and Addresses are
-still entity/repository-only with no service or controller layer yet. A separate client
+by real JWT authentication (see "Security"). Orders, Payments and Coupons are still entity/repository-only with no service or controller layer yet. Addresses now has a complete REST controller, service and DTO layer with customer ownership checks and default-address management. A separate client
 (a Flutter app, per the CORS origin in `SecurityConfig`) consumes the `/api/**` side of
 this backend; the Thymeleaf admin panel is this repo's own internal tool.
 
@@ -78,7 +77,8 @@ com.nikyfarm
 │   ├── ReviewController.java       /api/products/{productId}/reviews + /api/reviews/{id} — no class-level @RequestMapping (mixed base paths)
 │   ├── ReviewImageController.java  /api/review-images/** — upload/moderate
 │   ├── WishlistController.java     /api/me/wishlist/** — current user's own wishlist
-│   ├── CartItemController.java     /api/me/cart/** — current user's own cart
+│   ├── CartController.java         /api/me/cart/** — current user's own cart (Cart aggregate, CartItem lines nested under it)
+│   ├── AddressController.java      /api/addresses/** — customer addresses + default address
 │   └── admin/                      server-rendered Thymeleaf admin UI (see "Admin Panel" below) — every
 │       │                          controller here delegates to the same service used by the REST API
 │       ├── AdminHomeController.java, AdminCategoryController.java
@@ -89,6 +89,7 @@ com.nikyfarm
 │       ├── AdminAttributeOptionController.java, AdminProductAttributeValueController.java
 │       ├── AdminUserController.java, AdminReviewController.java
 │       ├── AdminWishlistController.java, AdminCartItemController.java
+│       ├── AdminAddressController.java
 ├── dto/
 │   ├── CategoryRequestDto.java / CategoryResponseDto.java
 │   ├── ProductRequestDto.java / ProductResponseDto.java
@@ -102,14 +103,17 @@ com.nikyfarm
 │   ├── ReviewRequestDto.java / ReviewUpdateRequestDto.java / ReviewResponseDto.java
 │   ├── ReviewImageResponseDto.java
 │   ├── WishlistRequestDto.java / WishlistResponseDto.java
-│   ├── CartItemRequestDto.java / CartItemResponseDto.java
+│   ├── CartResponseDto.java, CartItemRequestDto.java / CartItemResponseDto.java,
+│   │   CartItemQuantityUpdateDto.java, CartItemAdminViewDto.java
+│   ├── AddressRequestDto.java / AddressResponseDto.java
 │   ├── ImageUploadResponse.java, ImageUploadResult.java, BulkImageUploadResponse.java
 ├── mapper/
 │   ├── CategoryMapper.java, ProductMapper.java, ProductVariantMapper.java   entity <-> response DTO, static utility classes
 │   ├── AttributeMapper.java, AttributeOptionMapper.java, ProductAttributeValueMapper.java
 │   ├── ProductImageMapper.java
-│   ├── UserMapper.java, ReviewMapper.java, ReviewImageMapper.java, WishlistMapper.java, CartItemMapper.java
-├── entity/                         17 JPA entities (see below)
+│   ├── UserMapper.java, ReviewMapper.java, ReviewImageMapper.java, WishlistMapper.java,
+│   │   CartMapper.java, CartItemMapper.java, AddressMapper.java
+├── entity/                         18 JPA entities (see below)
 ├── exception/
 │   ├── ResourceNotFoundException.java    → 404
 │   ├── DuplicateResourceException.java   → 409 (slug/SKU/name/option-value/email already taken)
@@ -118,14 +122,14 @@ com.nikyfarm
 │   ├── InvalidCredentialsException.java  → 401 (bad login, or a deactivated account)
 │   ├── ErrorResponse.java                shared error payload record
 │   └── GlobalExceptionHandler.java       @RestControllerAdvice — single source of truth for error responses, logs unexpected (500) exceptions
-├── repository/                     17 Spring Data JPA repositories
+├── repository/                     18 Spring Data JPA repositories
 └── service/
     ├── CategoryService.java (+Impl), ProductService.java (+Impl), ProductVariantService.java (+Impl)
     ├── AttributeService.java (+Impl), AttributeOptionService.java (+Impl), ProductAttributeValueService.java (+Impl)
     ├── ProductImageService.java (+Impl)   extracted from ProductImageController so REST + admin UI share one implementation
     ├── AuthService.java (+Impl), UserService.java (+Impl)
     ├── ReviewService.java (+Impl), ReviewImageService.java (+Impl)
-    ├── WishlistService.java (+Impl), CartItemService.java (+Impl)
+    ├── WishlistService.java (+Impl), CartService.java (+Impl)
     └── CloudinaryService.java (+Impl)
 ```
 
@@ -141,9 +145,10 @@ com.nikyfarm
 | `AttributeOptions` | attribute_options | value | `@ManyToOne Attribute` |
 | `ProductAttributeValue` | product_attribute_value | valueText | `@ManyToOne Product/Attribute/AttributeOptions`; **not** mapped as a collection on `Product` — `ProductService.deleteProduct` must delete these rows explicitly before deleting the product, or the FK constraint blocks the delete |
 | `User` | users | name, email, passwordHash, role (enum `CUSTOMER/ADMIN`), isActive | none |
-| `Addresses` | addresses | fullName, phone, address lines, isDefault | `@ManyToOne User`; **PK is `int`, inconsistent with rest of app (`Long`)** |
+| `Addresses` | addresses | fullName, phone, line1, line2, city, state, postalCode, isDefault, createdAt | `@ManyToOne User`; **PK is `int`, inconsistent with the service/API layer (`Long`)** |
 | `Wishlist` | wishlist_items | createdAt | `@ManyToOne User`; `@ManyToOne Product` |
-| `CartItems` | cart_items | quantity | `@ManyToOne ProductVariant`; `@ManyToOne User` |
+| `Cart` | carts | createdAt, updatedAt | `@OneToOne User` (unique FK — one cart per user); `@OneToMany CartItem` (cascade ALL, orphanRemoval) |
+| `CartItem` | cart_items | quantity, addedAt | `@ManyToOne Cart`; `@ManyToOne ProductVariant` — unique constraint on `(cart_id, product_variant_id)` so re-adding a variant already in the cart bumps quantity instead of inserting a duplicate row |
 | `Reviews` | reviews | rating, title, comment, isVerifiedPurchase | `@ManyToOne Product/User/ReviewImage` |
 | `ReviewImage` | review_images | imageUrl, publicId (added so it can actually be deleted from Cloudinary) | none |
 | `Coupon` | coupons | code, discountType (enum `PERCENTAGE/FLAT`), discountValue, maxUses | none |
@@ -154,6 +159,15 @@ com.nikyfarm
 Modeling inconsistencies to be aware of: `Order.status` is a raw String while
 `paymentStatus` is an enum; `Order`'s address fields aren't real JPA relations;
 `Addresses.id` is `int` instead of `Long` like every other entity.
+
+**Cart was refactored from a flat `CartItems` entity to a `Cart`/`CartItem` aggregate**
+(a `Cart` per user owning its `CartItem` lines) — the standard e-commerce shape, and a
+prerequisite for things like per-cart totals or a future "abandoned cart" job that a flat
+`CartItems -> User` table doesn't support cleanly. `CartItem` deliberately does not
+snapshot unit price (unlike `OrderItems`, which does) — a cart should always reflect the
+variant's live price/stock; snapshotting belongs at checkout time. `ddl-auto=update` does
+not migrate old `cart_items` rows (`user_id` FK) onto the new schema (`cart_id` FK) — see
+Known Gaps.
 
 ## REST Endpoints
 
@@ -275,13 +289,33 @@ case-insensitive) and forbids `attributeOptionsId`. Assigning also checks the at
 | POST | `` | Add a product (`WishlistRequestDto`; 409 if already there) |
 | DELETE | `/{id}` | Remove an item — 404 if it isn't yours |
 
-### CartItemController — `/api/me/cart` (all authenticated, all scoped to the caller)
+### CartController — `/api/me/cart` (all authenticated, all scoped to the caller)
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `` | Your cart |
-| POST | `` | Add a variant+quantity (`CartItemRequestDto`) — merges into an existing row for that variant instead of duplicating; 409 if the merged quantity would exceed `stockQuantity` |
-| PUT | `/{id}?quantity=` | Set an absolute quantity — 404 if not yours, 409 over stock |
-| DELETE | `/{id}` | Remove an item — 404 if it isn't yours |
+| GET | `` | Your cart → `CartResponseDto` (items + computed `totalItemCount`/`totalPrice`). Returns an empty, unpersisted cart view rather than 404 if you've never added anything |
+| POST | `/items` | Add a variant+quantity (`CartItemRequestDto`) — creates your `Cart` row on first use, merges into an existing line for that variant instead of duplicating (unique `(cart_id, product_variant_id)`) |
+| PUT | `/items/{itemId}` | Set an absolute quantity (`CartItemQuantityUpdateDto` body) — 404 if the item isn't yours |
+| DELETE | `/items/{itemId}` | Remove one line item — 404 if it isn't yours |
+| DELETE | `` | Clear every item from your cart |
+
+Stock is not hard-enforced on add/update (no 409) — instead `CartItemResponseDto.stockInsufficient`
+flags a line whose `quantity` exceeds the variant's current `stockQuantity`, so the client
+can warn before checkout without blocking the cart itself from going over momentarily
+(e.g. someone else buying the last units after it was added).
+
+### AddressController — `/api/addresses`
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `` | Create an address for the authenticated customer; request `userId` is overwritten from JWT for non-admin callers |
+| PUT | `/{id}` | Update an address; ownership checked |
+| GET | `/{id}` | Get one address; owner/admin access |
+| GET | `/me` | List the authenticated customer's addresses |
+| GET | `/me/default` | Get the authenticated customer's default address |
+| GET | `/user/{userId}` | List a user's addresses (admin only) |
+| PUT | `/{id}/default` | Make an address the default and clear the user's previous default |
+| DELETE | `/{id}` | Delete an address; ownership checked |
+
+`AddressRequestDto` validates full name, 10-digit phone number, address fields and a 5–6 digit postal code. Only one default address is maintained per user: creating/updating an address with `isDefault=true`, or explicitly calling the default endpoint, clears the existing default first. Ownership failures return 404 to avoid exposing another user's address id.
 
 All not-found/validation/business-rule errors across every controller are funneled
 through `GlobalExceptionHandler` (`@RestControllerAdvice`), which returns a consistent
@@ -335,9 +369,13 @@ classes in `mapper/` rather than inline in the services.
   plus the delete guard (`ReviewsRepository.existsByReviewImageId`).
 - **WishlistService** — `add`/`getMine`/`remove` (customer-facing, ownership-checked) plus
   `getAll(userId)`/`removeByAdmin` (admin, no ownership check) for the admin screen.
-- **CartItemService** — `addOrMerge` (existing row for that variant → increment quantity,
-  checked against `stockQuantity`), `getMine`/`updateQuantity`/`remove` (ownership-checked),
-  plus `getAll(userId)`/`removeByAdmin` for the admin screen.
+- **CartService** — `getCart` (never 404s for a user with no cart yet — returns an empty
+  view); `addItem` (lazily creates the `Cart` row on first use via `UserRepository`,
+  merges into the existing `CartItem` for that variant instead of duplicating);
+  `updateItemQuantity`/`removeItem` (ownership-checked via `findByIdAndCartId`);
+  `clearCart`; plus `listAllItems(userId)`/`deleteItemAsAdmin` for the admin screen
+  (no ownership check, matches every other admin path in this module).
+- **AddressesService** — CRUD with owner/admin access checks; customer requests are scoped to the JWT principal, while admins can query another user's addresses. Supports listing addresses, retrieving the default address and setting exactly one default address per user. Default switching clears the previous default inside a transaction.
 
 ## Repositories
 
@@ -356,9 +394,15 @@ Beyond inherited CRUD, the catalog repositories now expose:
 - **UserRepository** — `findByEmail`, `existsByEmail`, `existsByEmailAndIdNot`
 - **ReviewsRepository** — `findByProductId`, `existsByProductIdAndUserId` (one review per user per product), `existsByReviewImageId` (delete guard)
 - **WishlistRepository** — `findByUserId`, `existsByUserIdAndProductId`
-- **CartItemsRepository** — `findByUserId`, `findByUserIdAndProductVariantId` (merge-on-add lookup)
+- **CartRepository** — `findByUserId` (`@EntityGraph` on `items`/`items.productVariant`/
+  `items.productVariant.product` — the "view my cart" read in one query), `existsByUserId`
+- **CartItemRepository** — `findByCartId`, `findByCartIdAndProductVariantId` (merge-on-add
+  lookup), `findByIdAndCartId` (ownership-scoped lookup), `deleteByCartId`,
+  `deleteByCartIdAndProductVariantId`, plus `@EntityGraph`'d
+  `findAllByOrderByAddedAtDesc`/`findByCart_User_IdOrderByAddedAtDesc` for the admin table
+- **AddressesRepository** — `findByUserId`, `findByUserIdAndIsDefaultTrue` (address listing and default-address lookup)
 
-All other repositories (`ReviewImageRepository`, `AddressesRepository`, `CouponRepository`,
+All other repositories (`ReviewImageRepository`, `CouponRepository`,
 `OrderRepository`, `OrderItemsRepository`, `PaymentsRepository`) remain bare
 `JpaRepository` extensions with only inherited CRUD.
 
@@ -382,8 +426,9 @@ Two trust zones, deliberately handled differently:
 4. `/api/me/**`, `POST /api/products/*/reviews`, `PUT`/`DELETE /api/reviews/**`,
    `POST /api/review-images`, `GET`/`PUT /api/users/me` → `authenticated`
 5. `/api/users/**` (everything else — admin user management) → `hasRole('ADMIN')`
-6. `/api/**` (everything else — catalog writes, review moderation) → `hasRole('ADMIN')`
-7. `anyRequest` → `authenticated` (fallback)
+6. `/api/addresses/**` → controller-level `@PreAuthorize` and service ownership checks scope customer operations to their own addresses; `/user/{userId}` requires `ADMIN`
+7. `/api/**` (everything else — catalog writes, review moderation) → `hasRole('ADMIN')`
+8. `anyRequest` → `authenticated` (fallback)
 
 **JWT mechanics**: `JwtService` signs/verifies HMAC256 tokens (`jwt.secret`) with the
 user id as the subject and a `role` claim, 24h expiry (`jwt.expiration-ms`).
@@ -397,7 +442,7 @@ that matters. `JsonAuthenticationEntryPoint`/`JsonAccessDeniedHandler` write the
 `ErrorResponse` JSON shape `GlobalExceptionHandler` uses for 401/403s raised by the filter
 chain itself (which never reach a controller, so the `@RestControllerAdvice` can't handle them).
 
-**Ownership pattern**: `Wishlist`/`CartItems`/`Reviews` never accept a `userId` in the
+**Ownership pattern**: `Wishlist`/`Cart`/`Reviews` never accept a `userId` in the
 request body — it always comes from the JWT (`@AuthenticationPrincipal`). Update/delete on
 someone else's item returns **404, not 403** — a deliberate choice so a caller can't use
 the status code to confirm an id they don't own actually exists.
@@ -465,10 +510,18 @@ Notable design points not already covered under Security/Services/Endpoints abov
 - `CartItemResponseDto.lineTotal` uses the variant's `discountedPrice` when set, else
   `price` — the same "charge the discounted price if present" rule used elsewhere.
 - A review/wishlist/cart item's *existence* is never hidden behind ownership for
-  an admin — every admin service method (`getAllReviews`, `getAll(userId)`,
-  `removeByAdmin`, `updateReview(..., isAdmin=true, ...)`) bypasses the ownership check
-  entirely rather than reusing the customer-facing method with a bypass flag threaded
-  through, keeping the two call paths easy to reason about independently.
+  an admin — every admin service method (`getAllReviews`, `WishlistService.getAll(userId)`,
+  `CartService.listAllItems(userId)`/`deleteItemAsAdmin`, `updateReview(..., isAdmin=true, ...)`)
+  bypasses the ownership check entirely rather than reusing the customer-facing method
+  with a bypass flag threaded through, keeping the two call paths easy to reason about
+  independently.
+- **Cart is now an aggregate, not a flat table**: `CartItems` (quantity + `ProductVariant`
+  + `User`, directly) was replaced by `Cart` (one per `User`) owning a list of `CartItem`
+  (`ProductVariant` + `quantity`). `CartController` moved from flat cart-item CRUD at
+  `/api/me/cart` to a "my cart" resource with items nested under it
+  (`/api/me/cart/items/**`) — see Endpoints above. `AdminCartItemController`'s HTTP shape
+  and template (`admin/cart-items/list.html`) were left unchanged; only the service layer
+  underneath now reads through `Cart`.
 
 ## Admin Panel (Thymeleaf)
 
@@ -565,7 +618,7 @@ Design notes:
    JWT-in-cookie plumbing, a materially different mechanism this pass didn't build).
    Anyone who can reach the admin panel's port can manage the entire catalog and every
    user account with zero auth.
-3. Order, Payment, Coupon and Addresses entities still have no service/controller layer —
+3. Order, Payment and Coupon entities still have no service/controller layer —
    `Order.paymentStatus` exists but nothing ever sets it, so `Reviews.isVerifiedPurchase`
    can only ever be set manually by an admin (there's no purchase history to check against).
 4. `Order.status` is a raw `String` instead of an enum; `Order.shippingAddressId`/
@@ -590,3 +643,10 @@ Design notes:
 10. A request with an HTTP method nothing is mapped to (e.g. `DELETE` on a `POST`-only
     admin route) returns a raw 500, not 405 — `GlobalExceptionHandler`'s catch-all doesn't
     special-case `HttpRequestMethodNotSupportedException`. Pre-existing, unrelated to auth.
+11. The `CartItems -> Cart`/`CartItem` migration is schema-only, not data-preserving:
+    `ddl-auto=update` creates the new `carts` table and alters `cart_items` to add the
+    `cart_id` FK, but it does not backfill a `Cart` row per user or move old
+    `cart_items.user_id` rows onto it. In dev, drop the old `cart_items` table and let it
+    recreate empty rather than trying to carry old cart data forward. Stock is also not
+    hard-enforced on add/update (see CartController above) — only flagged via
+    `stockInsufficient` for the client to act on.

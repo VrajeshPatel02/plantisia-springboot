@@ -4,7 +4,7 @@ import com.nikyfarm.dto.AddressRequestDto;
 import com.nikyfarm.dto.AddressResponseDto;
 import com.nikyfarm.entity.Addresses;
 
-public class AddressMapper {
+public final class  AddressMapper {
 
     private AddressMapper(){
     }
