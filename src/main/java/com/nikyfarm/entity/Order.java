@@ -1,18 +1,21 @@
 package com.nikyfarm.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 @Entity
+@Builder
 @Table(name = "orders", indexes = {
         @Index(name = "idx_orders_user", columnList = "user_id"),
         @Index(name = "idx_orders_status", columnList = "status")
@@ -22,58 +25,94 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "order_number", unique = true)
+    @Column(nullable = false, unique = true, length = 64)
     private String orderNumber;
 
-    @Column(name = "status")
-    private String status;
-
-    @Column(name = "shipping_address_id")
-    private Long shippingAddressId;
-
-    @Column(name = "billing_address_id")
-    private Long billingAddressId;
-
-    @Column(name = "subtotal")
-    private Double subtotal;
-
-    @Column(name = "discount_amount")
-    private Double discountAmount;
-
-    @Column(name = "shipping_fee")
-    private Double shippingFee;
-
-    @Column(name = "tax_amount")
-    private Double taxAmount;
-
-    @Column(name = "total_amount")
-    private Double totalAmount;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_status")
-    private PaymentStatus paymentStatus = PaymentStatus.UNPAID;
+    @Column(nullable = false, length = 32)
+    private OrderStatus status;
 
-    @CreationTimestamp
-    @Column(name = "placed_at")
-    private LocalDateTime placedAt;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private PaymentStatus paymentStatus;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal subtotal;
 
-    @ManyToOne
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal discount;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal shippingFee;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalAmount;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shipping_address_id")
+    private Addresses shippingAddress;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "billing_address_id")
+    private Addresses billingAddress;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "coupon_id")
     private Coupon coupon;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<OrderItems> items = new ArrayList<>();
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        if (this.status == null) {
+            this.status = OrderStatus.PENDING;
+        }
+        if (this.paymentStatus == null) {
+            this.paymentStatus = PaymentStatus.UNPAID;
+        }
+        if (this.discount == null) {
+            this.discount = BigDecimal.ZERO;
+        }
+        if (this.shippingFee == null) {
+            this.shippingFee = BigDecimal.ZERO;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void addItem(OrderItems item) {
+        items.add(item);
+        item.setOrder(this);
+    }
 
     public enum PaymentStatus {
         UNPAID,
         PAID,
         REFUNDED,
         FAILED
+    }
+
+    public enum OrderStatus {
+        PENDING,
+        PROCESSING,
+        SHIPPED,
+        DELIVERED,
+        CANCELLED
     }
 
 }

@@ -1,16 +1,16 @@
 # Nikyfarm — E-Commerce Backend
 
-Reference documentation for the codebase. Last updated: 2026-09-09.
+Reference documentation for the codebase. Last updated: 2026-09-09 (Coupon & Order modules updated).
 
 ## Overview
 
 Spring Boot REST backend for an e-commerce platform (`com.niky:nikyfarm`). Covers the
 product catalog (categories, products, variants, attributes, images), plus accounts,
-reviews, wishlist and cart. Category, Product, ProductVariant, Attribute,
+reviews, wishlist, cart and orders. Category, Product, ProductVariant, Attribute,
 AttributeOptions, ProductAttributeValue, User, Reviews, ReviewImage, Wishlist and
 Cart/CartItem now all have full service/controller/DTO layers (see "Catalog Module",
 "Attributes (EAV) Module" and "Accounts, Reviews, Wishlist & Cart Module" below), secured
-by real JWT authentication (see "Security"). Orders, Payments and Coupons are still entity/repository-only with no service or controller layer yet. Addresses now has a complete REST controller, service and DTO layer with customer ownership checks and default-address management. A separate client
+by real JWT authentication (see "Security"). Orders and Coupons now have complete service, DTO, mapper and management flows. Orders support customer checkout, cancellation and admin status management with inventory handling and financial calculations; Coupons support lifecycle management, validation and checkout discount calculation. Addresses have a complete REST controller, service and DTO layer with customer ownership checks and default-address management. A separate client
 (a Flutter app, per the CORS origin in `SecurityConfig`) consumes the `/api/**` side of
 this backend; the Thymeleaf admin panel is this repo's own internal tool.
 
@@ -79,6 +79,8 @@ com.nikyfarm
 │   ├── WishlistController.java     /api/me/wishlist/** — current user's own wishlist
 │   ├── CartController.java         /api/me/cart/** — current user's own cart (Cart aggregate, CartItem lines nested under it)
 │   ├── AddressController.java      /api/addresses/** — customer addresses + default address
+│   ├── OrderController.java        /api/orders/** — checkout, buy-now, order history + cancellation
+│   ├── CouponController.java       /api/coupons/** — public checkout coupon validation
 │   └── admin/                      server-rendered Thymeleaf admin UI (see "Admin Panel" below) — every
 │       │                          controller here delegates to the same service used by the REST API
 │       ├── AdminHomeController.java, AdminCategoryController.java
@@ -90,6 +92,8 @@ com.nikyfarm
 │       ├── AdminUserController.java, AdminReviewController.java
 │       ├── AdminWishlistController.java, AdminCartItemController.java
 │       ├── AdminAddressController.java
+│       ├── AdminCouponController.java — /admin/coupons/** coupon management
+│       ├── AdminOrderController.java — /admin/orders/** order management + status updates
 ├── dto/
 │   ├── CategoryRequestDto.java / CategoryResponseDto.java
 │   ├── ProductRequestDto.java / ProductResponseDto.java
@@ -106,14 +110,17 @@ com.nikyfarm
 │   ├── CartResponseDto.java, CartItemRequestDto.java / CartItemResponseDto.java,
 │   │   CartItemQuantityUpdateDto.java, CartItemAdminViewDto.java
 │   ├── AddressRequestDto.java / AddressResponseDto.java
+│   ├── OrderRequestDto.java / OrderResponseDto.java / OrderItemRequestDto.java / OrderItemResponseDto.java
+│   ├── CouponRequestDto.java / CouponResponseDto.java
+│   ├── CouponValidationRequestDto.java / CouponValidationResponseDto.java
 │   ├── ImageUploadResponse.java, ImageUploadResult.java, BulkImageUploadResponse.java
 ├── mapper/
 │   ├── CategoryMapper.java, ProductMapper.java, ProductVariantMapper.java   entity <-> response DTO, static utility classes
 │   ├── AttributeMapper.java, AttributeOptionMapper.java, ProductAttributeValueMapper.java
-│   ├── ProductImageMapper.java
+│   ├── ProductImageMapper.java, CouponMapper.java
 │   ├── UserMapper.java, ReviewMapper.java, ReviewImageMapper.java, WishlistMapper.java,
-│   │   CartMapper.java, CartItemMapper.java, AddressMapper.java
-├── entity/                         18 JPA entities (see below)
+│   │   CartMapper.java, CartItemMapper.java, AddressMapper.java, OrderMapper.java, OrderItemMapper.java
+├── entity/                         JPA entities (see below)
 ├── exception/
 │   ├── ResourceNotFoundException.java    → 404
 │   ├── DuplicateResourceException.java   → 409 (slug/SKU/name/option-value/email already taken)
@@ -122,14 +129,16 @@ com.nikyfarm
 │   ├── InvalidCredentialsException.java  → 401 (bad login, or a deactivated account)
 │   ├── ErrorResponse.java                shared error payload record
 │   └── GlobalExceptionHandler.java       @RestControllerAdvice — single source of truth for error responses, logs unexpected (500) exceptions
-├── repository/                     18 Spring Data JPA repositories
+├── repository/                     Spring Data JPA repositories
 └── service/
     ├── CategoryService.java (+Impl), ProductService.java (+Impl), ProductVariantService.java (+Impl)
     ├── AttributeService.java (+Impl), AttributeOptionService.java (+Impl), ProductAttributeValueService.java (+Impl)
     ├── ProductImageService.java (+Impl)   extracted from ProductImageController so REST + admin UI share one implementation
     ├── AuthService.java (+Impl), UserService.java (+Impl)
     ├── ReviewService.java (+Impl), ReviewImageService.java (+Impl)
-    ├── WishlistService.java (+Impl), CartService.java (+Impl)
+    ├── WishlistService.java (+Impl), CartService.java (+Impl), AddressesService.java (+Impl)
+    ├── OrderService.java (+Impl) — checkout, buy-now, customer history, cancellation and admin status management
+    ├── CouponService.java (+Impl) — coupon CRUD, validation, status and usage management
     └── CloudinaryService.java (+Impl)
 ```
 
@@ -151,14 +160,12 @@ com.nikyfarm
 | `CartItem` | cart_items | quantity, addedAt | `@ManyToOne Cart`; `@ManyToOne ProductVariant` — unique constraint on `(cart_id, product_variant_id)` so re-adding a variant already in the cart bumps quantity instead of inserting a duplicate row |
 | `Reviews` | reviews | rating, title, comment, isVerifiedPurchase | `@ManyToOne Product/User/ReviewImage` |
 | `ReviewImage` | review_images | imageUrl, publicId (added so it can actually be deleted from Cloudinary) | none |
-| `Coupon` | coupons | code, discountType (enum `PERCENTAGE/FLAT`), discountValue, maxUses | none |
-| `Order` | orders | orderNumber, status (plain String), paymentStatus (enum `UNPAID/PAID/REFUNDED/FAILED`), totals | `@ManyToOne Coupon/User`; `shippingAddressId`/`billingAddressId` are raw `Long` FKs, not mapped relations |
-| `OrderItems` | order_items | snapshots of product/variant name, unitPrice, quantity | `@ManyToOne Order/Product/ProductVariant` |
+| `Coupon` | coupons | unique `code` (indexed), description, isActive, discountType (enum `PERCENTAGE/FLAT`), `discountValue` (`BigDecimal`), `minOrderValue` (`BigDecimal`), timesUsed, maxUses, validFrom, validUntil | embedded domain logic: `isValid(orderSubtotal)`, `calculateDiscount(orderSubtotal)`, `incrementTimesUsed()`; indexed code lookup |
+| `Order` | orders | orderNumber, lifecycle status (enum `PENDING/PROCESSING/SHIPPED/DELIVERED/CANCELLED`), paymentStatus (enum `UNPAID/PAID/REFUNDED/FAILED`), `subtotal`, `discount`, `shippingFee`, `totalAmount` (`BigDecimal`) | `@ManyToOne Coupon/User`; billing/shipping address references retained with order metadata |
+| `OrderItems` | order_items | `productNameSnapshot`, `variantLabelSnapshot`, `unitPrice` (`BigDecimal`), quantity, `lineTotal` (`BigDecimal`) | `@ManyToOne Order/Product/ProductVariant`; historical item snapshots preserve order-time product details |
 | `Payments` | payments | provider, transactionId, amount, status (enum `INITIATED/SUCCESS/FAILED/REFUNDED`) | `@ManyToOne Order` |
 
-Modeling inconsistencies to be aware of: `Order.status` is a raw String while
-`paymentStatus` is an enum; `Order`'s address fields aren't real JPA relations;
-`Addresses.id` is `int` instead of `Long` like every other entity.
+Order lifecycle and payment states are modeled explicitly to support controlled status transitions and checkout/cancellation workflows. Order financial values use `BigDecimal` for currency precision, and order items retain product/variant snapshots so historical orders are not affected by later catalog changes. `Addresses.id` remains `int` while much of the service/API layer uses `Long`.
 
 **Cart was refactored from a flat `CartItems` entity to a `Cart`/`CartItem` aggregate**
 (a `Cart` per user owning its `CartItem` lines) — the standard e-commerce shape, and a
@@ -317,6 +324,25 @@ can warn before checkout without blocking the cart itself from going over moment
 
 `AddressRequestDto` validates full name, 10-digit phone number, address fields and a 5–6 digit postal code. Only one default address is maintained per user: creating/updating an address with `isDefault=true`, or explicitly calling the default endpoint, clears the existing default first. Ownership failures return 404 to avoid exposing another user's address id.
 
+### CouponController — `/api/coupons`
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/validate` | Public checkout coupon verification using `CouponValidationRequestDto` (`code`, `orderSubtotal`) → returns validity, calculated discount amount and validation message |
+
+**Coupon validation** checks normalized code lookup, activation status, validity window, maximum usage bounds and minimum order subtotal before returning a `CouponValidationResponseDto`. Discount calculation is delegated to the `Coupon` domain model so percentage and flat discounts share one authoritative implementation.
+
+### OrderController — `/api/orders` (authenticated customer / shared)
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/checkout` | Place an order from the authenticated user's active shopping cart; converts cart items into order items and clears the cart after successful checkout |
+| POST | `/buy-now` | Place a direct order with custom item quantities; validates live inventory, decrements stock and applies coupon discount calculation when applicable |
+| GET | `/me` | Retrieve the authenticated customer's paginated order history |
+| GET | `/{id}` | Fetch specific order details with strict ownership verification (or authorized shared access where applicable) |
+| POST | `/{id}/cancel` | Cancel an active, unshipped order and automatically restore inventory for active product variants |
+
+**Checkout and inventory rules**: `createOrderFromCart` converts the current cart into an order using order-time product and variant snapshots, calculates precise financial totals and clears the cart only after successful order creation. `createDirectOrder` performs real-time stock validation before decrementing variant inventory and calculates applicable coupon discounts. Cancellation is lifecycle-aware: only eligible active, unshipped orders can be cancelled, and cancellation automatically restores stock for active product variants.
+
+
 All not-found/validation/business-rule errors across every controller are funneled
 through `GlobalExceptionHandler` (`@RestControllerAdvice`), which returns a consistent
 `ErrorResponse` JSON body (`timestamp`, `status`, `error`, `message`, `path`, optional
@@ -376,6 +402,9 @@ classes in `mapper/` rather than inline in the services.
   `clearCart`; plus `listAllItems(userId)`/`deleteItemAsAdmin` for the admin screen
   (no ownership check, matches every other admin path in this module).
 - **AddressesService** — CRUD with owner/admin access checks; customer requests are scoped to the JWT principal, while admins can query another user's addresses. Supports listing addresses, retrieving the default address and setting exactly one default address per user. Default switching clears the previous default inside a transaction.
+- **CouponService** — `createCoupon`, `updateCoupon`, `getCouponById`, `getCouponByCode`, `getAllCoupons`, `toggleCouponStatus` and `deleteCoupon`; normalizes codes through `CouponMapper` and applies dynamic validation for activation, validity dates, maximum usage and minimum subtotal thresholds. `CouponRequestDto` provides form validation with constraints such as `@NotBlank`, `@DecimalMin` and `@DateTimeFormat`; `CouponResponseDto` exposes formatted UI data, usage statistics and validation status.
+- **OrderService** — customer checkout through `createOrderFromCart` and `createDirectOrder`, customer history/detail retrieval with ownership verification, lifecycle-aware cancellation with stock restoration, and admin operations `getAllOrders`, `getOrderById` and `updateOrderStatus`. Order creation uses `BigDecimal` financial calculations, item snapshots and live inventory validation.
+
 
 ## Repositories
 
@@ -402,9 +431,7 @@ Beyond inherited CRUD, the catalog repositories now expose:
   `findAllByOrderByAddedAtDesc`/`findByCart_User_IdOrderByAddedAtDesc` for the admin table
 - **AddressesRepository** — `findByUserId`, `findByUserIdAndIsDefaultTrue` (address listing and default-address lookup)
 
-All other repositories (`ReviewImageRepository`, `CouponRepository`,
-`OrderRepository`, `OrderItemsRepository`, `PaymentsRepository`) remain bare
-`JpaRepository` extensions with only inherited CRUD.
+`ReviewImageRepository` and `PaymentsRepository` retain their supporting repository roles. **CouponRepository** supports normalized code lookup and coupon management/validation. **OrderRepository** and **OrderItemsRepository** support the order service's checkout, ownership-scoped history/detail retrieval, status management and cancellation workflows.
 
 ## Security (`SecurityConfig` + `security/`)
 
@@ -528,7 +555,7 @@ Notable design points not already covered under Security/Services/Endpoints abov
 A server-rendered admin UI lives at `/admin` and covers **every** route in the backend —
 Category, Product, ProductVariant, Product Images (product-level and per-variant,
 including bulk upload/replace), Attribute, AttributeOptions, ProductAttributeValue, Users,
-Reviews, Wishlist and Cart. Every admin controller delegates to the same service used by
+Reviews, Wishlist, Cart, Addresses, Coupons and Orders. Every admin controller delegates to the same service used by
 the REST API (called directly — no HTTP hop). Views are under
 `src/main/resources/templates/admin/`, static CSS under
 `src/main/resources/static/css/admin.css`; styled with Bootstrap 5 + Bootstrap Icons via
@@ -562,6 +589,24 @@ tooling available in this environment), only via rendered-HTML/CSS inspection ov
 | `GET /admin/reviews`, `/{id}/edit`, `POST /{id}` (update), `/{id}/delete`, `/{id}/remove-image` | Review moderation — edit bypasses the ownership check a customer is subject to; the linked image (if any) shows inline with its own remove action, no standalone image screen |
 | `GET /admin/wishlist` (optional `?userId=`), `POST /{id}/delete` | View + remove only — admins don't add items to someone else's wishlist |
 | `GET /admin/cart-items` (optional `?userId=`), `POST /{id}/delete` | Same shape as Wishlist — view + remove only |
+| `GET /admin/coupons` | Paginated coupon listing with usage ratios, dynamic status badges, toggle controls and pagination |
+| `GET/POST /admin/coupons/create` | Coupon creation form with Bootstrap validation, date-time inputs and error handling |
+| `GET/POST /admin/coupons/{id}/edit` | Coupon edit form and update submission |
+| `POST /admin/coupons/{id}/toggle` | Instant coupon activation/deactivation |
+| `POST /admin/coupons/{id}/delete` | Coupon deletion |
+| `GET /admin/coupons/check-code` | AJAX helper for coupon code uniqueness checking |
+| `GET /admin/orders` | Paginated order overview with payment status indicators and quick access links |
+| `GET /admin/orders/{id}` | Detailed order view with customer information, billing/shipping addresses, item snapshots and current statuses |
+| `POST /admin/orders/{id}/status` | Administrative order status state transition (`PENDING`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `CANCELLED`) and payment status update |
+| `POST /admin/orders/{id}/cancel` | Administrative cancellation with automatic inventory rollback |
+
+### Admin Coupon Management — `/admin/coupons`
+
+`AdminCouponController` is protected with `@PreAuthorize("hasRole('ADMIN')")` and provides the complete Thymeleaf coupon workflow. The list view at `templates/admin/coupons/list.html` includes usage ratios, status badges, toggle controls and pagination. The shared create/edit view at `templates/admin/coupons/form.html` includes Bootstrap 5 validation states, date-time inputs and error handlers. The controller also exposes an AJAX code-uniqueness helper at `GET /admin/coupons/check-code`.
+
+### Admin Order Management — `/admin/orders`
+
+The admin dashboard includes centralized order management through `AdminOrderController`, protected with `@PreAuthorize("hasRole('ADMIN')")`. `GET /admin/orders` provides a filterable, paginated listing across lifecycle statuses. `GET /admin/orders/{id}` exposes the complete order record, including customer information, billing/shipping addresses, immutable product/variant snapshots and financial totals. Administrators can update both order and payment status through `POST /admin/orders/{id}/status`, or cancel an order through `POST /admin/orders/{id}/cancel`; administrative cancellation uses the same inventory rollback rules as customer cancellation. `templates/admin/orders/list.html` provides consolidated tracking with payment status indicators and quick links, while `templates/admin/orders/detail.html` provides line items, pricing breakdown (subtotal, coupon discount and grand total), customer details and a status-update sidebar.
 
 **Image screens are split by scope**, not combined behind a dropdown:
 `templates/admin/images/list.html` (general product gallery, linked from the product
@@ -618,12 +663,8 @@ Design notes:
    JWT-in-cookie plumbing, a materially different mechanism this pass didn't build).
    Anyone who can reach the admin panel's port can manage the entire catalog and every
    user account with zero auth.
-3. Order, Payment and Coupon entities still have no service/controller layer —
-   `Order.paymentStatus` exists but nothing ever sets it, so `Reviews.isVerifiedPurchase`
-   can only ever be set manually by an admin (there's no purchase history to check against).
-4. `Order.status` is a raw `String` instead of an enum; `Order.shippingAddressId`/
-   `billingAddressId` are raw `Long` columns, not real `@ManyToOne` relations;
-   `Addresses.id` is `int` instead of `Long` like every other entity.
+3. A dedicated payment-provider workflow is still not implemented. Coupon lifecycle, validation, usage metrics and admin management are now implemented; Order checkout, cancellation and admin status management are also implemented.
+4. `Addresses.id` remains `int` while much of the service/API layer uses `Long`; address-reference modeling can be further normalized if needed.
 5. `Product.name` was added after `monstera-deliciosa`, `snake-plant` and `marigold`
    were already created — those rows have `name = NULL` until edited once through the
    form (harmless: reads still work, only create/update require it going forward).
