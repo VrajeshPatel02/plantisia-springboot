@@ -8,8 +8,7 @@ import com.nikyfarm.entity.ProductAttributeValue;
 
 public final class ProductAttributeValueMapper {
 
-    private ProductAttributeValueMapper() {
-    }
+    private ProductAttributeValueMapper() {}
 
     public static ProductAttributeValueResponseDto toResponseDto(ProductAttributeValue pav) {
         Attribute attribute = pav.getAttribute();
@@ -22,8 +21,7 @@ public final class ProductAttributeValueMapper {
                 attribute != null ? attribute.getInputType() : null,
                 option != null ? option.getId() : null,
                 option != null ? option.getValue() : null,
-                pav.getValueText()
-        );
+                pav.getValueText());
     }
 
     /** Pre-fills an edit form with the current values of an existing product attribute value. */

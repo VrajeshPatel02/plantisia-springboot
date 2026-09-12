@@ -2,9 +2,8 @@ package com.nikyfarm.service;
 
 import com.nikyfarm.dto.CategoryRequestDto;
 import com.nikyfarm.dto.CategoryResponseDto;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface CategoryService {
 

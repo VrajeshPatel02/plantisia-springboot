@@ -2,7 +2,6 @@ package com.nikyfarm.service;
 
 import com.nikyfarm.dto.WishlistRequestDto;
 import com.nikyfarm.dto.WishlistResponseDto;
-
 import java.util.List;
 
 public interface WishlistService {

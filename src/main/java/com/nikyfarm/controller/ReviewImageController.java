@@ -2,13 +2,12 @@ package com.nikyfarm.controller;
 
 import com.nikyfarm.dto.ReviewImageResponseDto;
 import com.nikyfarm.service.ReviewImageService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/review-images")

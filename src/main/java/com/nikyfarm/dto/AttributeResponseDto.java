@@ -10,6 +10,4 @@ public record AttributeResponseDto(
         Integer sortOrder,
         Long categoryId,
         String categoryName,
-        int optionCount
-) {
-}
+        int optionCount) {}

@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Current user's own cart — mirrors the shape of WishlistController. Replaces the old
- * CartItemController; the resource is now the aggregate ("my cart"), with items as a
- * nested collection under it, rather than flat cart-item CRUD.
+ * CartItemController; the resource is now the aggregate ("my cart"), with items as a nested
+ * collection under it, rather than flat cart-item CRUD.
  */
 @RestController
 @RequestMapping("/api/me/cart")
@@ -37,8 +37,7 @@ public class CartController {
 
     @PostMapping("/items")
     public ResponseEntity<CartResponseDto> addItem(
-            @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody CartItemRequestDto request) {
+            @AuthenticationPrincipal Long userId, @Valid @RequestBody CartItemRequestDto request) {
         CartResponseDto cart = cartService.addItem(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(cart);
     }
@@ -53,9 +52,7 @@ public class CartController {
     }
 
     @DeleteMapping("/items/{itemId}")
-    public ResponseEntity<CartResponseDto> removeItem(
-            @AuthenticationPrincipal Long userId,
-            @PathVariable Long itemId) {
+    public ResponseEntity<CartResponseDto> removeItem(@AuthenticationPrincipal Long userId, @PathVariable Long itemId) {
         return ResponseEntity.ok(cartService.removeItem(userId, itemId));
     }
 

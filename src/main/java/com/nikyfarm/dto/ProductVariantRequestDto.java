@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import lombok.Data;
 
 @Data
@@ -19,11 +20,11 @@ public class ProductVariantRequestDto {
     private String colour;
 
     @NotNull(message = "Price is required")
-    @DecimalMin(value = "0.0", message = "Price cannot be negative")
-    private Double price;
+    @DecimalMin(value = "0.00", message = "Price cannot be negative")
+    private BigDecimal price;
 
-    @DecimalMin(value = "0.0", message = "Discounted price cannot be negative")
-    private Double discountedPrice;
+    @DecimalMin(value = "0.00", message = "Discounted price cannot be negative")
+    private BigDecimal discountedPrice;
 
     @NotNull(message = "Stock quantity is required")
     @Min(value = 0, message = "Stock quantity cannot be negative")

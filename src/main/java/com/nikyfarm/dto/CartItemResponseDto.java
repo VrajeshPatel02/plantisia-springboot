@@ -1,12 +1,11 @@
 package com.nikyfarm.dto;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -25,7 +24,12 @@ public class CartItemResponseDto {
     private Integer quantity;
     private BigDecimal lineTotal;
     private Integer availableStock;
-    /** True when quantity requested exceeds current stockQuantity — lets the client flag it before checkout. */
+
+    /**
+     * True when quantity requested exceeds current stockQuantity — lets the client flag it before
+     * checkout.
+     */
     private boolean stockInsufficient;
+
     private LocalDateTime addedAt;
 }

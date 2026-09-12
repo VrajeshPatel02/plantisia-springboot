@@ -7,15 +7,16 @@ import com.nikyfarm.entity.ProductImage;
 
 public final class ProductMapper {
 
-    private ProductMapper() {
-    }
+    private ProductMapper() {}
 
     public static ProductResponseDto toResponseDto(Product product) {
-        String primaryImageUrl = product.getProductImages() == null ? null : product.getProductImages().stream()
-                .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
-                .map(ProductImage::getImageUrl)
-                .findFirst()
-                .orElse(null);
+        String primaryImageUrl = product.getProductImages() == null
+                ? null
+                : product.getProductImages().stream()
+                        .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
+                        .map(ProductImage::getImageUrl)
+                        .findFirst()
+                        .orElse(null);
 
         return new ProductResponseDto(
                 product.getId(),
@@ -31,10 +32,11 @@ public final class ProductMapper {
                 product.getCategory() != null ? product.getCategory().getId() : null,
                 product.getCategory() != null ? product.getCategory().getName() : null,
                 primaryImageUrl,
-                product.getProductVariants() != null ? product.getProductVariants().size() : 0,
+                product.getProductVariants() != null
+                        ? product.getProductVariants().size()
+                        : 0,
                 product.getCreatedAt(),
-                product.getUpdatedAt()
-        );
+                product.getUpdatedAt());
     }
 
     /** Pre-fills an edit form with the current values of an existing product. */

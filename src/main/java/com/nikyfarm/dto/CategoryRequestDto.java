@@ -15,7 +15,9 @@ public class CategoryRequestDto {
 
     @NotBlank(message = "Slug is required")
     @Size(max = 160, message = "Slug must be at most 160 characters")
-    @Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*$", message = "Slug must be lowercase alphanumeric words separated by hyphens")
+    @Pattern(
+            regexp = "^[a-z0-9]+(-[a-z0-9]+)*$",
+            message = "Slug must be lowercase alphanumeric words separated by hyphens")
     private String slug;
 
     @Size(max = 2000, message = "Description must be at most 2000 characters")

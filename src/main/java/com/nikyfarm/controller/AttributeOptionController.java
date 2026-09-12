@@ -4,12 +4,11 @@ import com.nikyfarm.dto.AttributeOptionRequestDto;
 import com.nikyfarm.dto.AttributeOptionResponseDto;
 import com.nikyfarm.service.AttributeOptionService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/attributes/{attributeId}/options")
@@ -20,8 +19,7 @@ public class AttributeOptionController {
 
     @PostMapping
     public ResponseEntity<AttributeOptionResponseDto> createOption(
-            @PathVariable Long attributeId,
-            @RequestBody @Valid AttributeOptionRequestDto request) {
+            @PathVariable Long attributeId, @RequestBody @Valid AttributeOptionRequestDto request) {
         AttributeOptionResponseDto response = attributeOptionService.createOption(attributeId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -36,8 +34,7 @@ public class AttributeOptionController {
 
     @GetMapping("/{optionId}")
     public ResponseEntity<AttributeOptionResponseDto> getOption(
-            @PathVariable Long attributeId,
-            @PathVariable Long optionId) {
+            @PathVariable Long attributeId, @PathVariable Long optionId) {
         return ResponseEntity.ok(attributeOptionService.getOptionById(attributeId, optionId));
     }
 
@@ -47,9 +44,7 @@ public class AttributeOptionController {
     }
 
     @DeleteMapping("/{optionId}")
-    public ResponseEntity<Void> deleteOption(
-            @PathVariable Long attributeId,
-            @PathVariable Long optionId) {
+    public ResponseEntity<Void> deleteOption(@PathVariable Long attributeId, @PathVariable Long optionId) {
         attributeOptionService.deleteOption(attributeId, optionId);
         return ResponseEntity.noContent().build();
     }

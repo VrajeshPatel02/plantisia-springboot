@@ -8,11 +8,10 @@ import com.nikyfarm.exception.DuplicateResourceException;
 import com.nikyfarm.exception.ResourceNotFoundException;
 import com.nikyfarm.mapper.UserMapper;
 import com.nikyfarm.repository.UserRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -67,7 +66,8 @@ public class UserServiceImpl implements UserService {
     }
 
     private User findUserOrThrow(Long id) {
-        return userRepository.findById(id)
+        return userRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
     }
 }

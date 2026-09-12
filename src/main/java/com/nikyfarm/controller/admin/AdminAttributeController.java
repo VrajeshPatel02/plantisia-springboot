@@ -18,8 +18,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * Server-rendered admin UI for Attribute CRUD. Delegates to the same {@link AttributeService}
- * used by the JSON REST API.
+ * Server-rendered admin UI for Attribute CRUD. Delegates to the same {@link AttributeService} used
+ * by the JSON REST API.
  */
 @Controller
 @RequestMapping("/admin/attributes")
@@ -45,10 +45,11 @@ public class AdminAttributeController {
     }
 
     @PostMapping
-    public String create(@Valid @ModelAttribute("attribute") AttributeRequestDto request,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String create(
+            @Valid @ModelAttribute("attribute") AttributeRequestDto request,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             addFormReferenceData(model, "/admin/attributes", false);
             return "admin/attributes/form";
@@ -73,11 +74,12 @@ public class AdminAttributeController {
     }
 
     @PostMapping("/{id}")
-    public String update(@PathVariable Long id,
-                          @Valid @ModelAttribute("attribute") AttributeRequestDto request,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String update(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("attribute") AttributeRequestDto request,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             addFormReferenceData(model, "/admin/attributes/" + id, true);
             return "admin/attributes/form";

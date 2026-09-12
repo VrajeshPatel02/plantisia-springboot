@@ -8,8 +8,7 @@ import com.nikyfarm.entity.User;
 
 public final class ReviewMapper {
 
-    private ReviewMapper() {
-    }
+    private ReviewMapper() {}
 
     public static ReviewResponseDto toResponseDto(Reviews review) {
         Product product = review.getProduct();
@@ -28,7 +27,6 @@ public final class ReviewMapper {
                 image != null ? image.getId() : null,
                 image != null ? image.getImageUrl() : null,
                 review.getCreatedAt(),
-                review.getUpdatedAt()
-        );
+                review.getUpdatedAt());
     }
 }

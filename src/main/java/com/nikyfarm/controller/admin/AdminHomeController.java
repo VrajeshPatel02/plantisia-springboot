@@ -20,7 +20,9 @@ public class AdminHomeController {
     @GetMapping({"", "/"})
     public String dashboard(Model model) {
         model.addAttribute("categoryCount", categoryService.getAllCategories().size());
-        model.addAttribute("productCount", productService.getProducts(null, PageRequest.of(0, 1)).getTotalElements());
+        model.addAttribute(
+                "productCount",
+                productService.getProducts(null, PageRequest.of(0, 1)).getTotalElements());
         return "admin/index";
     }
 }

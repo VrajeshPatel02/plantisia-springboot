@@ -3,10 +3,10 @@ package com.nikyfarm.controller.admin;
 import com.nikyfarm.dto.OrderResponseDto;
 import com.nikyfarm.dto.OrderStatusUpdateDto;
 import com.nikyfarm.entity.Order.OrderStatus;
-import com.nikyfarm.entity.Order.PaymentStatus;
 import com.nikyfarm.exception.BusinessRuleViolationException;
 import com.nikyfarm.exception.ResourceNotFoundException;
 import com.nikyfarm.service.OrderService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -32,9 +32,13 @@ public class AdminOrderController {
         Page<OrderResponseDto> orderPage = orderService.getAllOrders(status, PageRequest.of(page, size));
 
         model.addAttribute("orders", orderPage.getContent());
+
         model.addAttribute("currentPage", page);
+
         model.addAttribute("totalPages", orderPage.getTotalPages());
+
         model.addAttribute("selectedStatus", status);
+
         model.addAttribute("statuses", OrderStatus.values());
 
         return "admin/orders/list";
@@ -42,13 +46,21 @@ public class AdminOrderController {
 
     @GetMapping("/{id}")
     public String viewOrderDetails(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes) {
+
         try {
-            OrderResponseDto order = orderService.getOrderById(id,null, true );
+
+            OrderResponseDto order = orderService.getOrderById(id, null, true);
+
             model.addAttribute("order", order);
+
             model.addAttribute("orderStatuses", OrderStatus.values());
+
             return "admin/orders/detail";
+
         } catch (ResourceNotFoundException e) {
-            redirectAttributes.addFlashAttribute("errorM essage", e.getMessage());
+
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+
             return "redirect:/admin/orders";
         }
     }
@@ -56,25 +68,37 @@ public class AdminOrderController {
     @PostMapping("/{id}/status")
     public String updateOrderStatus(
             @PathVariable Long id,
-            @ModelAttribute OrderStatusUpdateDto updateDto,
+            @Valid @ModelAttribute OrderStatusUpdateDto updateDto,
             RedirectAttributes redirectAttributes) {
+
         try {
+
             orderService.updateOrderStatus(id, updateDto);
+
             redirectAttributes.addFlashAttribute("successMessage", "Order status updated successfully");
+
         } catch (ResourceNotFoundException | BusinessRuleViolationException e) {
+
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
+
         return "redirect:/admin/orders/" + id;
     }
 
     @PostMapping("/{id}/cancel")
     public String cancelOrder(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+
         try {
+
             orderService.cancelOrder(id, null, true);
+
             redirectAttributes.addFlashAttribute("successMessage", "Order cancelled and stock restored successfully");
+
         } catch (ResourceNotFoundException | BusinessRuleViolationException e) {
+
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
+
         return "redirect:/admin/orders";
     }
 }

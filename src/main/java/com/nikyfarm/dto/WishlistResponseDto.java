@@ -9,6 +9,4 @@ public record WishlistResponseDto(
         String productName,
         String productSlug,
         String primaryImageUrl,
-        LocalDateTime createdAt
-) {
-}
+        LocalDateTime createdAt) {}

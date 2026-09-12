@@ -1,5 +1,6 @@
 package com.nikyfarm.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record ProductResponseDto(
@@ -8,8 +9,8 @@ public record ProductResponseDto(
         String slug,
         String shortDescription,
         String description,
-        Double basePrice,
-        Double discountedPrice,
+        BigDecimal basePrice,
+        BigDecimal discountedPrice,
         Float avgRating,
         Integer reviewCount,
         Boolean isActive,
@@ -18,6 +19,4 @@ public record ProductResponseDto(
         String primaryImageUrl,
         int variantCount,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
-) {
-}
+        LocalDateTime updatedAt) {}

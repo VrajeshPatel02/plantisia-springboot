@@ -9,10 +9,11 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "product_images",
+@Table(
+        name = "product_images",
         indexes = {
-                @Index(name = "idx_product_images_product", columnList = "product_id"),
-                @Index(name = "idx_product_images_variant", columnList = "product_variant_id")
+            @Index(name = "idx_product_images_product", columnList = "product_id"),
+            @Index(name = "idx_product_images_variant", columnList = "product_variant_id")
         })
 public class ProductImage {
     @Id

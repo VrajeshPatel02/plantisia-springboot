@@ -5,17 +5,16 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.nikyfarm.entity.User;
+import java.time.Instant;
+import java.util.Date;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.util.Date;
-
 /**
- * Issues and verifies the JWTs used to authenticate {@code /api/**} requests. The token's
- * subject is the user id and it carries a {@code role} claim; {@link JwtAuthenticationFilter}
- * reads both to populate Spring Security's context — see that class for why the principal
- * is the raw user id rather than a {@code UserDetails} object.
+ * Issues and verifies the JWTs used to authenticate {@code /api/**} requests. The token's subject
+ * is the user id and it carries a {@code role} claim; {@link JwtAuthenticationFilter} reads both to
+ * populate Spring Security's context — see that class for why the principal is the raw user id
+ * rather than a {@code UserDetails} object.
  */
 @Service
 public class JwtService {
@@ -23,8 +22,7 @@ public class JwtService {
     private final Algorithm algorithm;
     private final long expirationMs;
 
-    public JwtService(@Value("${jwt.secret}") String secret,
-                       @Value("${jwt.expiration-ms}") long expirationMs) {
+    public JwtService(@Value("${jwt.secret}") String secret, @Value("${jwt.expiration-ms}") long expirationMs) {
         this.algorithm = Algorithm.HMAC256(secret);
         this.expirationMs = expirationMs;
     }
@@ -43,7 +41,9 @@ public class JwtService {
         return expirationMs;
     }
 
-    /** @return the decoded token, or null if missing/expired/tampered. */
+    /**
+     * @return the decoded token, or null if missing/expired/tampered.
+     */
     public DecodedJWT verify(String token) {
         try {
             return JWT.require(algorithm).build().verify(token);

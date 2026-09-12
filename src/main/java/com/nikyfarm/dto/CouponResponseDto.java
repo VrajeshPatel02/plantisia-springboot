@@ -1,11 +1,10 @@
 package com.nikyfarm.dto;
 
 import com.nikyfarm.entity.Coupon.DiscountType;
-import lombok.Builder;
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import lombok.Builder;
+import lombok.Data;
 
 @Data
 @Builder

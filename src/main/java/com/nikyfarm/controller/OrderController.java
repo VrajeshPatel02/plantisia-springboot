@@ -36,36 +36,29 @@ public class OrderController {
     @PostMapping("/buy-now")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
     public ResponseEntity<OrderResponseDto> buyNow(
-            @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody OrderCreateRequestDto request) {
+            @AuthenticationPrincipal Long userId, @Valid @RequestBody OrderCreateRequestDto request) {
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(orderService.createDirectOrder(userId, request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createDirectOrder(userId, request));
     }
 
     @GetMapping("/me")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
     public ResponseEntity<Page<OrderResponseDto>> getMyOrders(
-            @AuthenticationPrincipal Long userId,
-            @PageableDefault(size = 10) Pageable pageable) {
+            @AuthenticationPrincipal Long userId, @PageableDefault(size = 10) Pageable pageable) {
 
         return ResponseEntity.ok(orderService.getUserOrders(userId, pageable));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
-    public ResponseEntity<OrderResponseDto> getOrderById(
-            @AuthenticationPrincipal Long userId,
-            @PathVariable Long id) {
+    public ResponseEntity<OrderResponseDto> getOrderById(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
 
         return ResponseEntity.ok(orderService.getOrderById(id, userId, false));
     }
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
-    public ResponseEntity<OrderResponseDto> cancelOrder(
-            @AuthenticationPrincipal Long userId,
-            @PathVariable Long id) {
+    public ResponseEntity<OrderResponseDto> cancelOrder(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
 
         return ResponseEntity.ok(orderService.cancelOrder(id, userId, false));
     }

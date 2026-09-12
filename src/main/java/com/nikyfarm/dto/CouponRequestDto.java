@@ -2,11 +2,10 @@ package com.nikyfarm.dto;
 
 import com.nikyfarm.entity.Coupon.DiscountType;
 import jakarta.validation.constraints.*;
-import lombok.Data;
-import org.springframework.format.annotation.DateTimeFormat;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import lombok.Data;
+import org.springframework.format.annotation.DateTimeFormat;
 
 @Data
 public class CouponRequestDto {

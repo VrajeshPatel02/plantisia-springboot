@@ -11,11 +11,10 @@ import com.nikyfarm.mapper.AttributeMapper;
 import com.nikyfarm.repository.AttributeRepository;
 import com.nikyfarm.repository.CategoryRepository;
 import com.nikyfarm.repository.ProductAttributeValueRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -56,9 +55,8 @@ public class AttributeServiceImpl implements AttributeService {
     @Override
     @Transactional(readOnly = true)
     public List<AttributeResponseDto> getAttributes(Long categoryId) {
-        List<Attribute> attributes = categoryId != null
-                ? attributeRepository.findByCategoryId(categoryId)
-                : attributeRepository.findAll();
+        List<Attribute> attributes =
+                categoryId != null ? attributeRepository.findByCategoryId(categoryId) : attributeRepository.findAll();
         return attributes.stream().map(AttributeMapper::toResponseDto).toList();
     }
 
@@ -67,8 +65,9 @@ public class AttributeServiceImpl implements AttributeService {
     public void deleteAttribute(Long id) {
         Attribute attribute = findAttributeOrThrow(id);
         if (productAttributeValueRepository.existsByAttributeId(id)) {
-            throw new BusinessRuleViolationException(
-                    "Cannot delete attribute '" + attribute.getName() + "' because products still have values set for it");
+            throw new BusinessRuleViolationException("Cannot delete attribute '"
+                    + attribute.getName()
+                    + "' because products still have values set for it");
         }
         // cascade = ALL on Attribute.options removes its own AttributeOptions rows.
         attributeRepository.delete(attribute);
@@ -92,12 +91,14 @@ public class AttributeServiceImpl implements AttributeService {
     }
 
     private Category findCategoryOrThrow(Long categoryId) {
-        return categoryRepository.findById(categoryId)
+        return categoryRepository
+                .findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
     }
 
     private Attribute findAttributeOrThrow(Long id) {
-        return attributeRepository.findById(id)
+        return attributeRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attribute not found with id: " + id));
     }
 }

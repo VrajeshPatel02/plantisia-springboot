@@ -10,12 +10,11 @@ import com.nikyfarm.exception.ResourceNotFoundException;
 import com.nikyfarm.mapper.CategoryMapper;
 import com.nikyfarm.repository.CategoryRepository;
 import com.nikyfarm.repository.ProductRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -56,7 +55,8 @@ public class CategoryServiceImpl implements CategoryService {
         applyDto(category, dto, parent);
 
         if (file != null && !file.isEmpty()) {
-            ImageUploadResult uploaded = cloudinaryService.replaceImage(category.getImagePublicId(), file, IMAGE_FOLDER);
+            ImageUploadResult uploaded =
+                    cloudinaryService.replaceImage(category.getImagePublicId(), file, IMAGE_FOLDER);
             category.setImageUrl(uploaded.getImageUrl());
             category.setImagePublicId(uploaded.getPublicId());
         }
@@ -87,7 +87,8 @@ public class CategoryServiceImpl implements CategoryService {
             throw new BusinessRuleViolationException("Cannot delete category " + id + " because it has subcategories");
         }
         if (productRepository.existsByCategoryId(id)) {
-            throw new BusinessRuleViolationException("Cannot delete category " + id + " because it still has products assigned to it");
+            throw new BusinessRuleViolationException(
+                    "Cannot delete category " + id + " because it still has products assigned to it");
         }
 
         if (category.getImagePublicId() != null) {
@@ -105,7 +106,9 @@ public class CategoryServiceImpl implements CategoryService {
         category.setParent(resolvedParent);
     }
 
-    /** @param categoryId the category being created/updated, or null when creating a brand-new one. */
+    /**
+     * @param categoryId the category being created/updated, or null when creating a brand-new one.
+     */
     private Category resolveParent(Long categoryId, Long parentId) {
         if (parentId == null) {
             return null;
@@ -113,7 +116,8 @@ public class CategoryServiceImpl implements CategoryService {
         if (parentId.equals(categoryId)) {
             throw new BusinessRuleViolationException("A category cannot be its own parent");
         }
-        Category parent = categoryRepository.findById(parentId)
+        Category parent = categoryRepository
+                .findById(parentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Parent category not found with id: " + parentId));
         if (categoryId != null) {
             assertNoCycle(categoryId, parent);
@@ -121,13 +125,17 @@ public class CategoryServiceImpl implements CategoryService {
         return parent;
     }
 
-    /** Walks up the candidate parent's ancestor chain to make sure {@code categoryId} isn't among them. */
+    /**
+     * Walks up the candidate parent's ancestor chain to make sure {@code categoryId} isn't among
+     * them.
+     */
     private void assertNoCycle(Long categoryId, Category candidateParent) {
         Category current = candidateParent;
         int depth = 0;
         while (current != null) {
             if (current.getId().equals(categoryId)) {
-                throw new BusinessRuleViolationException("Assigning this parent would create a circular category hierarchy");
+                throw new BusinessRuleViolationException(
+                        "Assigning this parent would create a circular category hierarchy");
             }
             if (++depth > MAX_PARENT_CHAIN_DEPTH) {
                 throw new BusinessRuleViolationException("Category hierarchy is too deep");
@@ -146,7 +154,8 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     private Category findCategoryOrThrow(Long id) {
-        return categoryRepository.findById(id)
+        return categoryRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
     }
 }

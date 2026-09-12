@@ -13,23 +13,22 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * The cart aggregate root — exactly one per {@link User}. Replaces the old flat
- * {@code CartItems -> User} shape: line items now hang off a Cart, not off the user
- * directly, which is the standard e-commerce modeling (User 1---1 Cart 1---* CartItem).
+ * The cart aggregate root — exactly one per {@link User}. Replaces the old flat {@code CartItems ->
+ * User} shape: line items now hang off a Cart, not off the user directly, which is the standard
+ * e-commerce modeling (User 1---1 Cart 1---* CartItem).
  *
- * Kept deliberately "thin": no totals/price columns are persisted here. Totals are
- * derived at read time in {@code CartMapper} from each item's live variant price, so the
- * cart never goes stale if a product's price changes after items were added (unlike an
- * Order/OrderItem, which intentionally snapshots price at purchase time).
+ * <p>Kept deliberately "thin": no totals/price columns are persisted here. Totals are derived at
+ * read time in {@code CartMapper} from each item's live variant price, so the cart never goes stale
+ * if a product's price changes after items were added (unlike an Order/OrderItem, which
+ * intentionally snapshots price at purchase time).
  */
 @Entity
 @Table(name = "carts")
@@ -43,8 +42,8 @@ public class Cart {
     private Long id;
 
     /**
-     * One cart per user. {@code unique = true} on the FK enforces the 1:1 at the DB
-     * level, not just in application code.
+     * One cart per user. {@code unique = true} on the FK enforces the 1:1 at the DB level, not just
+     * in application code.
      */
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
@@ -81,7 +80,10 @@ public class Cart {
         item.setCart(this);
     }
 
-    /** Keeps both sides of the bidirectional association in sync (needed for orphanRemoval to fire on delete). */
+    /**
+     * Keeps both sides of the bidirectional association in sync (needed for orphanRemoval to fire on
+     * delete).
+     */
     public void removeItem(CartItem item) {
         items.remove(item);
         item.setCart(null);

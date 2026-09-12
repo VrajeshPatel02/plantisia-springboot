@@ -7,7 +7,5 @@ import org.springframework.boot.test.context.SpringBootTest;
 class NikyfarmApplicationTests {
 
     @Test
-    void contextLoads() {
-    }
-
+    void contextLoads() {}
 }

@@ -8,12 +8,11 @@ import com.nikyfarm.exception.ResourceNotFoundException;
 import com.nikyfarm.mapper.ReviewImageMapper;
 import com.nikyfarm.repository.ReviewImageRepository;
 import com.nikyfarm.repository.ReviewsRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +43,9 @@ public class ReviewImageServiceImpl implements ReviewImageService {
     @Override
     @Transactional(readOnly = true)
     public List<ReviewImageResponseDto> getAll() {
-        return reviewImageRepository.findAll().stream().map(ReviewImageMapper::toResponseDto).toList();
+        return reviewImageRepository.findAll().stream()
+                .map(ReviewImageMapper::toResponseDto)
+                .toList();
     }
 
     @Override
@@ -61,7 +62,8 @@ public class ReviewImageServiceImpl implements ReviewImageService {
     }
 
     private ReviewImage findOrThrow(Long id) {
-        return reviewImageRepository.findById(id)
+        return reviewImageRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Review image not found with id: " + id));
     }
 }

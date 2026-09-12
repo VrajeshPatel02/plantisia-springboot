@@ -15,10 +15,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * Server-rendered admin moderation UI for Reviews. No standalone ReviewImage screen --
- * its thumbnail and delete action live inline on the review it belongs to, since an
- * image has no independent browse use case. Admin edits bypass the ownership check
- * that a customer editing their own review is subject to (see ReviewServiceImpl).
+ * Server-rendered admin moderation UI for Reviews. No standalone ReviewImage screen -- its
+ * thumbnail and delete action live inline on the review it belongs to, since an image has no
+ * independent browse use case. Admin edits bypass the ownership check that a customer editing their
+ * own review is subject to (see ReviewServiceImpl).
  */
 @Controller
 @RequestMapping("/admin/reviews")
@@ -49,11 +49,12 @@ public class AdminReviewController {
     }
 
     @PostMapping("/{id}")
-    public String update(@PathVariable Long id,
-                          @Valid @ModelAttribute("review") ReviewUpdateRequestDto request,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String update(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("review") ReviewUpdateRequestDto request,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             model.addAttribute("existing", reviewService.getById(id));
             model.addAttribute("reviewId", id);

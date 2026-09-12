@@ -5,12 +5,11 @@ import com.nikyfarm.dto.UserSelfUpdateRequestDto;
 import com.nikyfarm.dto.UserUpdateRequestDto;
 import com.nikyfarm.service.UserService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -25,8 +24,8 @@ public class UserController {
     }
 
     @PutMapping("/me")
-    public ResponseEntity<UserResponseDto> updateMe(@AuthenticationPrincipal Long userId,
-                                                     @RequestBody @Valid UserSelfUpdateRequestDto request) {
+    public ResponseEntity<UserResponseDto> updateMe(
+            @AuthenticationPrincipal Long userId, @RequestBody @Valid UserSelfUpdateRequestDto request) {
         return ResponseEntity.ok(userService.updateSelf(userId, request));
     }
 
@@ -41,7 +40,8 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponseDto> update(@PathVariable Long id, @RequestBody @Valid UserUpdateRequestDto request) {
+    public ResponseEntity<UserResponseDto> update(
+            @PathVariable Long id, @RequestBody @Valid UserUpdateRequestDto request) {
         return ResponseEntity.ok(userService.updateByAdmin(id, request));
     }
 

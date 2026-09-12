@@ -1,9 +1,8 @@
 package com.nikyfarm.repository;
 
 import com.nikyfarm.entity.ProductImage;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProductImageRepository extends JpaRepository<ProductImage, Long> {
     long countByProductId(Long productId);
@@ -16,6 +15,4 @@ public interface ProductImageRepository extends JpaRepository<ProductImage, Long
 
     // Everything for a product regardless of variant — e.g. admin panel showing all uploads
     List<ProductImage> findByProductId(Long productId);
-
-
 }

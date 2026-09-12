@@ -13,6 +13,4 @@ public record CategoryResponseDto(
         Long parentId,
         String parentName,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
-) {
-}
+        LocalDateTime updatedAt) {}

@@ -2,7 +2,6 @@ package com.nikyfarm.service;
 
 import com.nikyfarm.dto.ProductVariantRequestDto;
 import com.nikyfarm.dto.ProductVariantResponseDto;
-
 import java.util.List;
 
 public interface ProductVariantService {

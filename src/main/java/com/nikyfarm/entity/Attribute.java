@@ -1,12 +1,11 @@
 package com.nikyfarm.entity;
 
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Getter
 @Setter
@@ -39,6 +38,9 @@ public class Attribute {
     private List<AttributeOptions> options = new ArrayList<>();
 
     public enum InputType {
-        TEXT, NUMBER, BOOLEAN, SELECT
+        TEXT,
+        NUMBER,
+        BOOLEAN,
+        SELECT
     }
 }

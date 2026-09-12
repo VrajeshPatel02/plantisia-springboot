@@ -7,18 +7,16 @@ import com.nikyfarm.exception.BusinessRuleViolationException;
 import com.nikyfarm.exception.ResourceNotFoundException;
 import com.nikyfarm.service.CouponService;
 import jakarta.validation.Valid;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
-import java.util.Map;
 
 @Controller
 @RequestMapping("/admin/coupons")
@@ -29,9 +27,7 @@ public class AdminCouponController {
 
     @GetMapping
     public String listCoupons(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            Model model) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, Model model) {
         Page<CouponResponseDto> couponPage = couponService.getAllCoupons(PageRequest.of(page, size));
         model.addAttribute("coupons", couponPage.getContent());
         model.addAttribute("currentPage", page);

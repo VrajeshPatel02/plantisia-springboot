@@ -1,0 +1,8 @@
+version: 3
+agent:
+  authtoken: 3JBdLdVp9SxyC0jx2HWwNnT2BvB_7vC1H2S2nA7h5HY6YsDMS
+endpoints:
+  - name: your_endpoint_name
+    url: https://uncivil-nanny-underwent.ngrok-free.dev
+    upstream:
+      url: 80

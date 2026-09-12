@@ -6,8 +6,7 @@ import com.nikyfarm.entity.Category;
 
 public final class CategoryMapper {
 
-    private CategoryMapper() {
-    }
+    private CategoryMapper() {}
 
     public static CategoryResponseDto toResponseDto(Category category) {
         Category parent = category.getParent();
@@ -22,8 +21,7 @@ public final class CategoryMapper {
                 parent != null ? parent.getId() : null,
                 parent != null ? parent.getName() : null,
                 category.getCreatedAt(),
-                category.getUpdatedAt()
-        );
+                category.getUpdatedAt());
     }
 
     /** Pre-fills an edit form with the current values of an existing category. */

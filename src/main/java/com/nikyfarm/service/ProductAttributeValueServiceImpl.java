@@ -14,16 +14,15 @@ import com.nikyfarm.repository.AttributeOptionsRepository;
 import com.nikyfarm.repository.AttributeRepository;
 import com.nikyfarm.repository.ProductAttributeValueRepository;
 import com.nikyfarm.repository.ProductRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 /**
- * Assigns EAV-style attribute values to a product. Each attribute allows at most one
- * value per product; the shape of the value (free text vs. a picked option) is dictated
- * by the attribute's {@link Attribute.InputType}.
+ * Assigns EAV-style attribute values to a product. Each attribute allows at most one value per
+ * product; the shape of the value (free text vs. a picked option) is dictated by the attribute's
+ * {@link Attribute.InputType}.
  */
 @Service
 @RequiredArgsConstructor
@@ -54,13 +53,15 @@ public class ProductAttributeValueServiceImpl implements ProductAttributeValueSe
 
     @Override
     @Transactional
-    public ProductAttributeValueResponseDto updateValue(Long productId, Long valueId, ProductAttributeValueRequestDto dto) {
+    public ProductAttributeValueResponseDto updateValue(
+            Long productId, Long valueId, ProductAttributeValueRequestDto dto) {
         Product product = findProductOrThrow(productId);
         ProductAttributeValue pav = findValueOrThrow(productId, valueId);
         Attribute attribute = findAttributeOrThrow(dto.getAttributeId());
         assertAttributeAppliesToProduct(product, attribute);
 
-        if (productAttributeValueRepository.existsByProductIdAndAttributeIdAndIdNot(productId, attribute.getId(), valueId)) {
+        if (productAttributeValueRepository.existsByProductIdAndAttributeIdAndIdNot(
+                productId, attribute.getId(), valueId)) {
             throw new DuplicateResourceException(
                     "Product " + productId + " already has a value set for attribute '" + attribute.getName() + "'");
         }
@@ -90,8 +91,12 @@ public class ProductAttributeValueServiceImpl implements ProductAttributeValueSe
         productAttributeValueRepository.delete(findValueOrThrow(productId, valueId));
     }
 
-    /** Sets the attribute and, based on its input type, either the picked option or the free-text value. */
-    private void applyAndValidateValue(ProductAttributeValue pav, Attribute attribute, ProductAttributeValueRequestDto dto) {
+    /**
+     * Sets the attribute and, based on its input type, either the picked option or the free-text
+     * value.
+     */
+    private void applyAndValidateValue(
+            ProductAttributeValue pav, Attribute attribute, ProductAttributeValueRequestDto dto) {
         pav.setAttribute(attribute);
 
         if (attribute.getInputType() == Attribute.InputType.SELECT) {
@@ -99,7 +104,8 @@ public class ProductAttributeValueServiceImpl implements ProductAttributeValueSe
                 throw new BusinessRuleViolationException(
                         "Attribute '" + attribute.getName() + "' requires selecting an option");
             }
-            AttributeOptions option = attributeOptionsRepository.findById(dto.getAttributeOptionsId())
+            AttributeOptions option = attributeOptionsRepository
+                    .findById(dto.getAttributeOptionsId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Attribute option not found with id: " + dto.getAttributeOptionsId()));
             if (!option.getAttribute().getId().equals(attribute.getId())) {
@@ -123,11 +129,13 @@ public class ProductAttributeValueServiceImpl implements ProductAttributeValueSe
             try {
                 Double.parseDouble(value);
             } catch (NumberFormatException e) {
-                throw new BusinessRuleViolationException("Value for attribute '" + attribute.getName() + "' must be numeric");
+                throw new BusinessRuleViolationException(
+                        "Value for attribute '" + attribute.getName() + "' must be numeric");
             }
         } else if (attribute.getInputType() == Attribute.InputType.BOOLEAN) {
             if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
-                throw new BusinessRuleViolationException("Value for attribute '" + attribute.getName() + "' must be true or false");
+                throw new BusinessRuleViolationException(
+                        "Value for attribute '" + attribute.getName() + "' must be true or false");
             }
         }
 
@@ -136,8 +144,10 @@ public class ProductAttributeValueServiceImpl implements ProductAttributeValueSe
     }
 
     private void assertAttributeAppliesToProduct(Product product, Attribute attribute) {
-        Long productCategoryId = product.getCategory() != null ? product.getCategory().getId() : null;
-        Long attributeCategoryId = attribute.getCategory() != null ? attribute.getCategory().getId() : null;
+        Long productCategoryId =
+                product.getCategory() != null ? product.getCategory().getId() : null;
+        Long attributeCategoryId =
+                attribute.getCategory() != null ? attribute.getCategory().getId() : null;
         if (attributeCategoryId != null && !attributeCategoryId.equals(productCategoryId)) {
             throw new BusinessRuleViolationException(
                     "Attribute '" + attribute.getName() + "' does not belong to this product's category");
@@ -145,20 +155,24 @@ public class ProductAttributeValueServiceImpl implements ProductAttributeValueSe
     }
 
     private Product findProductOrThrow(Long productId) {
-        return productRepository.findById(productId)
+        return productRepository
+                .findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
     }
 
     private Attribute findAttributeOrThrow(Long attributeId) {
-        return attributeRepository.findById(attributeId)
+        return attributeRepository
+                .findById(attributeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Attribute not found with id: " + attributeId));
     }
 
     private ProductAttributeValue findValueOrThrow(Long productId, Long valueId) {
-        ProductAttributeValue pav = productAttributeValueRepository.findById(valueId)
+        ProductAttributeValue pav = productAttributeValueRepository
+                .findById(valueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Attribute value not found with id: " + valueId));
         if (pav.getProduct() == null || !pav.getProduct().getId().equals(productId)) {
-            throw new ResourceNotFoundException("Attribute value " + valueId + " does not belong to product " + productId);
+            throw new ResourceNotFoundException(
+                    "Attribute value " + valueId + " does not belong to product " + productId);
         }
         return pav;
     }

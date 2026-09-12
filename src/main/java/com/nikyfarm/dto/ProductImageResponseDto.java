@@ -8,6 +8,4 @@ public record ProductImageResponseDto(
         String imageUrl,
         String altText,
         Integer sortOrder,
-        Boolean isPrimary
-) {
-}
+        Boolean isPrimary) {}

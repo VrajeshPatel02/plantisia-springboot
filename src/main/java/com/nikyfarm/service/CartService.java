@@ -3,7 +3,6 @@ package com.nikyfarm.service;
 import com.nikyfarm.dto.CartItemAdminViewDto;
 import com.nikyfarm.dto.CartItemRequestDto;
 import com.nikyfarm.dto.CartResponseDto;
-
 import java.util.List;
 
 public interface CartService {
@@ -22,7 +21,9 @@ public interface CartService {
 
     // --- admin-facing (AdminCartItemController) ---
 
-    /** @param userIdFilter optional — null returns items across every user's cart. */
+    /**
+     * @param userIdFilter optional — null returns items across every user's cart.
+     */
     List<CartItemAdminViewDto> listAllItems(Long userIdFilter);
 
     void deleteItemAsAdmin(Long itemId);

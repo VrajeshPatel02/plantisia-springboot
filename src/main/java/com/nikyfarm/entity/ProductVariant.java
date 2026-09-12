@@ -1,6 +1,7 @@
 package com.nikyfarm.entity;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -9,17 +10,16 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "product_variants",
-        indexes = {
-                @Index(name = "idx_variants_product", columnList = "product_id")
-        })
+@Table(
+        name = "product_variants",
+        indexes = {@Index(name = "idx_variants_product", columnList = "product_id")})
 public class ProductVariant {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "variant_label")
+    @Column(name = "variant_label", nullable = false, length = 150)
     private String variantLabel;
 
     @Column(name = "size")
@@ -28,25 +28,25 @@ public class ProductVariant {
     @Column(name = "colour")
     private String colour;
 
-    @Column(name = "price")
-    private Double price;
+    @Column(name = "price", nullable = false, precision = 19, scale = 2)
+    private BigDecimal price;
 
-    @Column(name = "discounted_price")
-    private Double discountedPrice;
+    @Column(name = "discounted_price", precision = 19, scale = 2)
+    private BigDecimal discountedPrice;
 
-    @Column(name = "stock_quantity")
+    @Column(name = "stock_quantity", nullable = false)
     private Integer stockQuantity;
 
-    @Column(name = "sku", length = 80)
+    @Column(name = "sku", nullable = false, unique = true, length = 80)
     private String sku;
 
-    @Column(name = "is_default")
-    private Boolean isDefault;
+    @Column(name = "is_default", nullable = false)
+    private Boolean isDefault = false;
 
-    @Column(name = "is_active")
-    private Boolean isActive;
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
 
-    @ManyToOne
-    @JoinColumn(name = "product_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 }

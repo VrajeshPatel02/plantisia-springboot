@@ -6,8 +6,7 @@ import com.nikyfarm.entity.ProductVariant;
 
 public final class ProductImageMapper {
 
-    private ProductImageMapper() {
-    }
+    private ProductImageMapper() {}
 
     public static ProductImageResponseDto toResponseDto(ProductImage image) {
         ProductVariant variant = image.getVariant();
@@ -19,7 +18,6 @@ public final class ProductImageMapper {
                 image.getImageUrl(),
                 image.getAltText(),
                 image.getSortOrder(),
-                image.getIsPrimary()
-        );
+                image.getIsPrimary());
     }
 }

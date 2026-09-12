@@ -15,6 +15,4 @@ public record ReviewResponseDto(
         Long reviewImageId,
         String reviewImageUrl,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
-) {
-}
+        LocalDateTime updatedAt) {}

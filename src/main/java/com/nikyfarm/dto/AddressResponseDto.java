@@ -13,6 +13,4 @@ public record AddressResponseDto(
         String postalCode,
         Boolean isDefault,
         LocalDateTime createdAt,
-        Long userId
-) {
-}
+        Long userId) {}

@@ -1,14 +1,11 @@
 package com.nikyfarm.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.*;
 
 @Getter
 @Setter
@@ -16,10 +13,12 @@ import java.util.List;
 @AllArgsConstructor
 @Entity
 @Builder
-@Table(name = "orders", indexes = {
-        @Index(name = "idx_orders_user", columnList = "user_id"),
-        @Index(name = "idx_orders_status", columnList = "status")
-})
+@Table(
+        name = "orders",
+        indexes = {
+            @Index(name = "idx_orders_user", columnList = "user_id"),
+            @Index(name = "idx_orders_status", columnList = "status")
+        })
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -114,5 +113,4 @@ public class Order {
         DELIVERED,
         CANCELLED
     }
-
 }

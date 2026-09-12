@@ -7,8 +7,7 @@ import com.nikyfarm.entity.Category;
 
 public final class AttributeMapper {
 
-    private AttributeMapper() {
-    }
+    private AttributeMapper() {}
 
     public static AttributeResponseDto toResponseDto(Attribute attribute) {
         Category category = attribute.getCategory();
@@ -20,8 +19,7 @@ public final class AttributeMapper {
                 attribute.getSortOrder(),
                 category != null ? category.getId() : null,
                 category != null ? category.getName() : null,
-                attribute.getOptions() != null ? attribute.getOptions().size() : 0
-        );
+                attribute.getOptions() != null ? attribute.getOptions().size() : 0);
     }
 
     /** Pre-fills an edit form with the current values of an existing attribute. */

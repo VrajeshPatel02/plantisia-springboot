@@ -1,6 +1,6 @@
 # Nikyfarm — E-Commerce Backend
 
-Reference documentation for the codebase. Last updated: 2026-09-09 (Coupon & Order modules updated).
+Reference documentation for the codebase. Last updated: 2026-09-09 (Coupon & Order modules updated; critical production hardening plan added before Payments).
 
 ## Overview
 
@@ -544,11 +544,11 @@ Notable design points not already covered under Security/Services/Endpoints abov
   independently.
 - **Cart is now an aggregate, not a flat table**: `CartItems` (quantity + `ProductVariant`
   + `User`, directly) was replaced by `Cart` (one per `User`) owning a list of `CartItem`
-  (`ProductVariant` + `quantity`). `CartController` moved from flat cart-item CRUD at
-  `/api/me/cart` to a "my cart" resource with items nested under it
-  (`/api/me/cart/items/**`) — see Endpoints above. `AdminCartItemController`'s HTTP shape
-  and template (`admin/cart-items/list.html`) were left unchanged; only the service layer
-  underneath now reads through `Cart`.
+    (`ProductVariant` + `quantity`). `CartController` moved from flat cart-item CRUD at
+    `/api/me/cart` to a "my cart" resource with items nested under it
+    (`/api/me/cart/items/**`) — see Endpoints above. `AdminCartItemController`'s HTTP shape
+    and template (`admin/cart-items/list.html`) were left unchanged; only the service layer
+    underneath now reads through `Cart`.
 
 ## Admin Panel (Thymeleaf)
 
@@ -654,17 +654,103 @@ Design notes:
 - `/admin/**` is still `permitAll()` even though `/api/**` is now JWT-secured — see
   "Security" above for why, and Known Gaps for the follow-up this implies.
 
+## Critical Stabilization Plan — Must Complete Before Payments
+
+The project will **not move directly into Razorpay integration**. The following issues affect security, money, inventory or order correctness and must be addressed first. These items will be completed **one by one**, with each change reviewed before moving to the next.
+
+| Priority | Critical Change | Why It Must Be Fixed | Status |
+|---|---|---|---|
+| P0 | Secure `/admin/**` | The current admin panel is reachable without authentication, allowing unauthorized management of catalog, users, coupons and orders. | TODO — Critical |
+| P0 | Externalize secrets | Database, Cloudinary, JWT and admin bootstrap credentials must not remain plaintext in source-controlled configuration. | TODO — Critical |
+| P0 | Introduce database migrations | `ddl-auto=update` is unsafe as the production schema change mechanism. Flyway/Liquibase is required before payment-related schema changes. | TODO — Critical |
+| P0 | Standardize all monetary values on `BigDecimal` | Product and variant prices currently use `Double` while orders use `BigDecimal`. Floating-point values must not enter checkout or payment calculations. | TODO — Critical |
+| P0 | Make inventory updates concurrency-safe | Current read-check-decrement stock logic can oversell when simultaneous checkouts read the same stock. Stock decrement/restoration must be atomic and idempotent. | TODO — Critical |
+| P0 | Validate address ownership during checkout | A valid address ID alone must not be accepted; shipping and billing addresses must belong to the authenticated customer. | TODO — Critical |
+| P0 | Enforce coupon validation and usage atomically | Checkout must call coupon validity rules before discounting, prevent usage-limit races and increment usage only at the correct confirmed lifecycle point. | TODO — Critical |
+| P0 | Enforce order status transitions centrally | Admin status updates must not freely set invalid states or bypass cancellation/restocking rules. Cancellation and stock rollback must be idempotent. | TODO — Critical |
+| P1 | Redesign Payment entity before Razorpay | `Payments` currently uses `Double` and lacks provider order IDs, payment IDs, signature/webhook metadata, failure data and idempotency fields required for a safe gateway workflow. | TODO — Next module |
+| P1 | Build Razorpay verification + webhook flow | Client success callbacks alone must never mark an order paid. Backend signature verification and webhook verification are required. | BLOCKED by Payment redesign |
+
+### Required Completion Order
+
+1. **Secure administration and configuration**
+  - Protect `/admin/**`.
+  - Externalize secrets and remove production credentials from tracked configuration.
+
+2. **Make database changes production-safe**
+  - Introduce migrations before changing money, order and payment schemas.
+
+3. **Fix money and catalog invariants**
+  - Convert product and variant price fields from `Double` to `BigDecimal`.
+  - Add required database constraints for SKU, stock and active flags where missing.
+
+4. **Fix checkout correctness**
+  - Validate product and variant availability.
+  - Validate shipping/billing address ownership.
+  - Validate coupon rules server-side.
+  - Use atomic inventory operations.
+
+5. **Fix order lifecycle correctness**
+  - Define allowed status transitions.
+  - Prevent direct `CANCELLED` status updates from bypassing rollback logic.
+  - Ensure stock restoration can happen only once.
+
+6. **Redesign Payments and implement Razorpay**
+  - Replace `Payments` with a production-oriented payment model.
+  - Create provider order.
+  - Verify payment signature server-side.
+  - Process verified webhooks idempotently.
+  - Update payment and order states transactionally.
+
+### Checkout Rule Going Forward
+
+The backend remains the source of truth for all financial and inventory decisions:
+
+```text
+Client Cart / Buy Now
+        ↓
+Backend reloads live ProductVariant data
+        ↓
+Validate product + variant active
+        ↓
+Validate address ownership
+        ↓
+Atomically validate/reserve inventory
+        ↓
+Calculate subtotal using BigDecimal
+        ↓
+Validate coupon server-side
+        ↓
+Create Order snapshot
+        ↓
+Create Payment provider order
+        ↓
+Client completes Razorpay payment
+        ↓
+Backend verifies signature
+        ↓
+Webhook provides independent confirmation
+        ↓
+Update Payment + Order transactionally
+```
+
 ## Known Gaps / Next Steps
 
-1. Plaintext DB/Cloudinary/JWT/admin-seed credentials in `application.properties` —
-   `dotenv-java` is a dependency but not wired up to externalize them.
-2. `/admin/**` has no authentication at all, unlike `/api/**` — see "Security" for why
-   (bearer-token JWT doesn't fit a server-rendered multi-page app without a login page +
-   JWT-in-cookie plumbing, a materially different mechanism this pass didn't build).
-   Anyone who can reach the admin panel's port can manage the entire catalog and every
-   user account with zero auth.
-3. A dedicated payment-provider workflow is still not implemented. Coupon lifecycle, validation, usage metrics and admin management are now implemented; Order checkout, cancellation and admin status management are also implemented.
-4. `Addresses.id` remains `int` while much of the service/API layer uses `Long`; address-reference modeling can be further normalized if needed.
+### Critical — scheduled before Payments
+
+1. Plaintext DB/Cloudinary/JWT/admin-seed credentials in `application.properties`.
+2. `/admin/**` currently lacks real authentication.
+3. No production migration mechanism; `spring.jpa.hibernate.ddl-auto=update` is still used.
+4. Product and ProductVariant monetary fields need conversion from `Double` to `BigDecimal`.
+5. Inventory decrement/restoration is not yet safe against concurrent checkout overselling.
+6. Checkout must explicitly verify address ownership.
+7. Coupon application and usage counting must be integrated into an atomic order/payment lifecycle.
+8. `updateOrderStatus` needs controlled transitions and must not bypass cancellation inventory rollback.
+9. The Payment module is not production-ready and Razorpay is not yet implemented.
+
+### Non-blocking / Later
+
+10. `Addresses.id` remains `int` while much of the service/API layer uses `Long`; address-reference modeling can be further normalized if needed.
 5. `Product.name` was added after `monstera-deliciosa`, `snake-plant` and `marigold`
    were already created — those rows have `name = NULL` until edited once through the
    form (harmless: reads still work, only create/update require it going forward).
@@ -691,3 +777,321 @@ Design notes:
     recreate empty rather than trying to carry old cart data forward. Stock is also not
     hard-enforced on add/update (see CartController above) — only flagged via
     `stockInsufficient` for the client to act on.
+---
+
+# Complete Project Issue Register & Production Completion Roadmap
+
+**Audit status:** 2026-09-09
+
+This section is the master issue register for the project based on the modules and implementation state documented in this `project.md`, together with the Order, Coupon, Cart, Product, ProductVariant, Payment, Security and configuration files reviewed during the current work.
+
+The items below intentionally include **critical, important and later improvements** so that the project has one checklist instead of losing issues as new modules are implemented. Items are classified by production impact; not every item blocks the current module.
+
+## Severity Definitions
+
+| Severity | Meaning | Rule |
+|---|---|---|
+| **P0 — Critical** | Security, money, inventory, payment or data-integrity failure | Must be fixed before production/payment integration where applicable |
+| **P1 — Required** | Important production correctness or missing workflow | Must be completed before project production release |
+| **P2 — Important** | Reliability, maintainability or API correctness improvement | Complete before or shortly after first production release |
+| **P3 — Later** | UX, administration, observability or technical-debt improvement | Planned but not blocking |
+
+---
+
+## A. Security & Access Control
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| SEC-01 | P0 | `/admin/**` is permit-all | Any unauthenticated visitor can potentially access administrative management routes. Require authentication and `ADMIN` authorization consistently. | TODO |
+| SEC-02 | P0 | Secrets stored in configuration | DB, Cloudinary, JWT and admin bootstrap credentials must be externalized and removed from tracked configuration. Rotate any credentials already committed. | TODO |
+| SEC-03 | P1 | Production CORS origins are not finalized | Replace localhost development origins with explicit deployed app origins and review credential usage. | TODO |
+| SEC-04 | P1 | JWT lifecycle is minimal | Add a defined production policy for token expiry, logout/revocation strategy if required, secret rotation and invalidated/deactivated users. | TODO |
+| SEC-05 | P1 | Admin bootstrap is development-oriented | `AdminSeeder` is not a production credential lifecycle. Use a controlled initial-admin provisioning process. | TODO |
+| SEC-06 | P2 | No documented rate limiting / abuse controls | Public auth, coupon validation and future payment endpoints need abuse protection appropriate to deployment infrastructure. | TODO |
+
+## B. Database & Schema Management
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| DB-01 | P0 | `ddl-auto=update` is used as schema migration | Introduce Flyway or Liquibase before money/order/payment schema changes. | TODO |
+| DB-02 | P0 | Existing schema changes may be data-destructive or incomplete | Write explicit migrations for the Cart aggregate conversion and all upcoming entity changes. | TODO |
+| DB-03 | P1 | `Addresses.id` type differs from most entity IDs | Normalize the identifier strategy or explicitly preserve compatibility through a migration plan. | TODO |
+| DB-04 | P1 | Required database constraints need review | Enforce SKU uniqueness, required stock fields, non-null active flags and other service invariants at DB level where appropriate. | TODO |
+| DB-05 | P1 | Order/payment indexes are incomplete for provider workflows | Add indexes/unique constraints for order number and future provider order/payment IDs through migrations. | TODO |
+| DB-06 | P2 | Audit/history strategy is incomplete | Define whether sensitive lifecycle changes require actor/time/history records beyond `createdAt`/`updatedAt`. | TODO |
+
+## C. Money & Pricing
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| MONEY-01 | P0 | Product and ProductVariant use `Double` for money | Convert catalog prices and related DTO/mapper/calculation code to `BigDecimal`. | TODO |
+| MONEY-02 | P0 | Money representation is inconsistent across catalog and orders | Establish one rounding and scale policy for all prices, discounts, totals and payments. | TODO |
+| MONEY-03 | P1 | Payment entity amount uses `Double` | Replace with `BigDecimal`; Razorpay conversion to smallest currency unit must occur only at the provider boundary. | TODO |
+| MONEY-04 | P1 | Selling-price rule must be centralized | The `discountedPrice != null ? discountedPrice : price` rule should be reusable and validated consistently. | TODO |
+| MONEY-05 | P1 | Discount validation needs final server-side enforcement | Coupon discounts must never make totals negative and percentage/flat rules must be validated against current subtotal. | TODO |
+| MONEY-06 | P2 | Currency is not modeled explicitly | Define the supported currency policy before payment integration; persist currency where payment/provider records require it. | TODO |
+
+## D. Product & Variant Integrity
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| CAT-01 | P0 | Product/variant availability is not guaranteed during checkout | Checkout must reject inactive products and inactive variants. | TODO |
+| CAT-02 | P1 | Stock can be null/negative without complete invariant enforcement | Add validation and DB constraints; stock must never become negative. | TODO |
+| CAT-03 | P1 | SKU uniqueness must be enforced by DB | Repository checks alone race; add a database unique constraint/index. | TODO |
+| CAT-04 | P1 | ProductVariant `ManyToOne` loading should be reviewed | Use explicit `LAZY` loading where appropriate to avoid accidental eager fetch behavior. | TODO |
+| CAT-05 | P1 | Active/default booleans require null-safe defaults | Prevent tri-state `Boolean` values when business logic expects true/false. | TODO |
+| CAT-06 | P2 | Product-level versus variant-level price ownership is ambiguous | Define whether products without variants are supported; otherwise make variant price/stock the selling source of truth. | TODO |
+| CAT-07 | P2 | A product can have zero variants | Enforce the business rule or define a valid non-variant purchasing path. | TODO |
+| CAT-08 | P2 | Legacy product rows may contain null `name` values | Clean existing data through migration/admin correction before stricter production constraints. | TODO |
+
+## E. Cart Integrity
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| CART-01 | P0 | Cart quantity can exceed live stock | Validate requested total quantity on add/update; checkout must revalidate independently. | TODO |
+| CART-02 | P0 | Cart item may reference inactive/unavailable catalog data | Reject inactive product/variant additions and quantity updates. | TODO |
+| CART-03 | P1 | Quantity invariants require complete validation | Enforce minimum quantity of 1 and reject invalid values. | TODO |
+| CART-04 | P1 | Old CartItems-to-Cart migration is not data-preserving | Decide migration/backfill strategy or explicitly reset development-only cart data. | TODO |
+| CART-05 | P1 | Cart should not reserve stock | Preserve current lightweight cart design; reservation belongs to checkout/order lifecycle. | DESIGN CONFIRMED |
+| CART-06 | P1 | Cart clearing currently happens too early for payment UX | Clear the cart after verified successful payment, not merely after creating an unpaid order. | TODO |
+| CART-07 | P2 | Concurrent cart edits are not explicitly protected | Consider optimistic locking/versioning if multi-device updates become important. | TODO |
+| CART-08 | P3 | Admin cart mutation is questionable | Prefer analytics/support visibility over arbitrary removal of customer cart items unless required. | REVIEW LATER |
+
+## F. Address & Customer Ownership
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| ADDR-01 | P0 | Checkout loads addresses by ID without final ownership validation | Shipping and billing addresses must belong to the authenticated user unless an explicitly authorized admin workflow exists. | TODO |
+| ADDR-02 | P1 | Order address history relies on live address relations | Decide whether order-time address snapshots are required so later customer edits do not alter historical fulfillment records. | TODO |
+| ADDR-03 | P2 | Identifier type inconsistency | See DB-03; normalize `int`/`Long` usage across entity, repository, DTO and API boundaries. | TODO |
+
+## G. Inventory & Concurrency
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| INV-01 | P0 | Read-check-decrement stock can oversell | Use atomic conditional updates, pessimistic locking, or another deliberate concurrency strategy. | TODO |
+| INV-02 | P0 | Stock restoration must be idempotent | A cancelled order must restore each reserved quantity exactly once. | TODO |
+| INV-03 | P0 | Inventory reservation lifecycle is undefined for unpaid orders | Define reservation expiry/release when a payment is abandoned, fails or expires. | TODO |
+| INV-04 | P1 | Direct order and cart checkout must share inventory logic | Centralize validation/reservation so flows cannot diverge. | TODO |
+| INV-05 | P1 | Product/variant deletion with historical orders needs policy | Historical `OrderItems` snapshots are good, but decide how active order references to variants are handled. | TODO |
+| INV-06 | P2 | No inventory audit trail | Consider stock movement/history records if operational reconciliation is required. | TODO |
+
+## H. Coupon Correctness
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| COUPON-01 | P0 | Order flow calculates discount without guaranteed full `isValid()` lifecycle enforcement | Validate active state, dates, max usage and minimum subtotal before applying. | TODO |
+| COUPON-02 | P0 | Usage counting can race | Make usage increment conditional/atomic against maxUses. | TODO |
+| COUPON-03 | P0 | Coupon consumption point is not finalized | Do not permanently consume a coupon for an abandoned/failed payment unless business rules explicitly require it. Tie consumption to confirmed order/payment lifecycle. | TODO |
+| COUPON-04 | P1 | Coupon deletion/history policy needs definition | Existing orders should retain historical discount results even if a coupon is later disabled/deleted. | TODO |
+| COUPON-05 | P2 | Code normalization must be universal | Ensure create, update, lookup and checkout all use the same trim/uppercase policy. | TODO |
+
+## I. Order Lifecycle & Checkout
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| ORDER-01 | P0 | Status updates currently allow arbitrary assignment | Define an explicit state-transition matrix and reject invalid transitions. | TODO |
+| ORDER-02 | P0 | Admin can set `CANCELLED` through status update and bypass cancellation logic | Route all cancellations through one cancellation operation with inventory/payment handling. | TODO |
+| ORDER-03 | P0 | Unpaid-order lifecycle is incomplete | Define pending-payment expiry, retry behavior and stock release. | TODO |
+| ORDER-04 | P0 | Checkout must recalculate all totals on backend | Never trust Flutter/client cart totals, discounts or amounts. | DESIGN REQUIRED IN CODE |
+| ORDER-05 | P0 | Duplicate checkout/idempotency protection is absent | Prevent repeated client retries from creating duplicate orders/reservations. | TODO |
+| ORDER-06 | P1 | Order number generation should rely on DB uniqueness/retry safety | Keep the unique constraint and define collision/retry handling. | TODO |
+| ORDER-07 | P1 | Shipping fee policy is currently hardcoded to zero | Define calculation source and snapshot it into the order when shipping is implemented. | TODO |
+| ORDER-08 | P1 | Payment status should not be freely changed by admin UI | Payment status should normally be driven by verified payment/refund events; admin override needs an audited exceptional path. | TODO |
+| ORDER-09 | P1 | Cart clearing timing must follow verified payment | Preserve cart for failed/abandoned attempts and clear only on confirmed success according to final flow. | TODO |
+| ORDER-10 | P2 | Order address snapshot policy is incomplete | See ADDR-02; historical fulfillment data should not unexpectedly change. | TODO |
+| ORDER-11 | P2 | Order status/payment status are separate but coupled | Document allowed combinations, e.g. whether `CANCELLED + PAID` requires refund state. | TODO |
+
+### Proposed Order Transition Matrix
+
+This is the target to implement, not a claim that it already exists:
+
+| From | Allowed To |
+|---|---|
+| `PENDING` | `PROCESSING`, `CANCELLED` |
+| `PROCESSING` | `SHIPPED`, `CANCELLED` only if fulfillment rules permit |
+| `SHIPPED` | `DELIVERED` |
+| `DELIVERED` | No normal lifecycle transition |
+| `CANCELLED` | No normal lifecycle transition |
+
+Payment transitions will be defined separately by verified gateway/refund events.
+
+## J. Payment & Razorpay
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| PAY-01 | P0 | Current `Payments` model is not production-ready | Redesign entity/model before Razorpay implementation. | TODO |
+| PAY-02 | P0 | Payment amount uses `Double` | Convert to `BigDecimal` and apply exact provider amount conversion. | TODO |
+| PAY-03 | P0 | Provider order/payment identifiers are missing | Persist Razorpay order ID and payment ID with uniqueness rules. | TODO |
+| PAY-04 | P0 | Client callback cannot be trusted as payment confirmation | Verify Razorpay signature on backend. | TODO |
+| PAY-05 | P0 | Webhook verification is not implemented | Verify webhook signature using raw request body and process events safely. | TODO |
+| PAY-06 | P0 | Payment processing needs idempotency | Duplicate callbacks/webhooks/retries must not double-update orders, stock or coupons. | TODO |
+| PAY-07 | P0 | Unpaid/failed payment retry lifecycle is undefined | Define whether an existing provider order/payment attempt is reused or a new attempt is created. | TODO |
+| PAY-08 | P1 | Failure information is missing | Persist provider failure code/message where appropriate for support and retry decisions. | TODO |
+| PAY-09 | P1 | Currency is missing from payment model | Persist explicit currency required by provider records. | TODO |
+| PAY-10 | P1 | Refund lifecycle is incomplete | Define refund request, provider confirmation, idempotency and order/payment state changes. | TODO |
+| PAY-11 | P1 | Webhook endpoint security must coexist with JWT | Exclude only the verified provider webhook endpoint from JWT authentication; do not leave unrelated endpoints public. | TODO |
+| PAY-12 | P2 | Payment attempt history is not modeled | Consider separate attempts/events if retries and reconciliation require them. | TODO |
+
+## K. API & Error Handling
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| API-01 | P1 | Unsupported HTTP methods can fall into generic 500 handling | Return proper 405 via explicit exception handling. | TODO |
+| API-02 | P1 | Admin and REST error handling differ | Define a consistent strategy for HTML error pages versus JSON API errors without leaking internal exceptions. | REVIEW |
+| API-03 | P1 | Pagination limits need policy | Enforce maximum page size to prevent expensive unrestricted queries. | TODO |
+| API-04 | P2 | Sorting inputs need allow-listing | Restrict sort fields to supported entity properties rather than arbitrary client values. | TODO |
+| API-05 | P2 | API versioning is not defined | Decide whether `/api/v1` is needed before public production clients depend on the contract. | REVIEW |
+| API-06 | P2 | Postman collection is incomplete | Backfill Attributes/EAV and all newer Order/Coupon/Payment endpoints. | TODO |
+
+## L. Reviews, Wishlist & User Accounts
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| USER-01 | P1 | No password change/reset flow | Add secure password change/reset process before production launch. | TODO |
+| USER-02 | P1 | Admin password reset workflow is absent | Define controlled reset/provisioning behavior. | TODO |
+| USER-03 | P2 | Review verified-purchase lifecycle is not integrated with orders | Implement verification only if the feature is required for launch. | TODO |
+| USER-04 | P2 | User deletion and historical references need retention policy | Avoid breaking orders/reviews/audit data through destructive deletes. Prefer a deliberate lifecycle/retention policy. | TODO |
+| USER-05 | P3 | Admin manual cart/wishlist operations need business policy | Keep only operations that have a clear support/admin purpose. | REVIEW |
+
+## M. Cloudinary & File Management
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| FILE-01 | P1 | Database and Cloudinary operations are not one atomic transaction | Upload/delete failures can leave orphaned provider assets or DB rows. Add compensation/reconciliation strategy for production. | TODO |
+| FILE-02 | P1 | Image cleanup needs operational reconciliation | Provide a way to detect orphaned Cloudinary assets and stale DB references. | TODO |
+| FILE-03 | P2 | `ImageUploadResponse.publicId` is mislabeled | Correct API naming or version/document the actual meaning before clients rely on it. | TODO |
+| FILE-04 | P2 | Upload validation should be defense-in-depth | Continue validating size/type server-side and consider content inspection where deployment risk requires it. | REVIEW |
+
+## N. Admin Panel
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| ADMIN-01 | P0 | Admin routes are publicly reachable | Same as SEC-01; fix first. | TODO |
+| ADMIN-02 | P1 | Order payment status can be manually changed | Prevent normal admin UI from forging gateway state; use verified payment/refund operations. | TODO |
+| ADMIN-03 | P1 | No explicit admin audit trail | Record who changed sensitive order, coupon, user and payment state where required. | TODO |
+| ADMIN-04 | P2 | Admin exception handling is controller-specific | Consider a dedicated MVC exception handler for consistent HTML error behavior. | TODO |
+| ADMIN-05 | P3 | Dashboard operational metrics are basic | Add meaningful order/payment/inventory metrics after core correctness is complete. | LATER |
+
+## O. Observability, Testing & Deployment
+
+| ID | Severity | Issue | Current Risk / Required Change | Status |
+|---|---|---|---|---|
+| OPS-01 | P1 | Production logging policy is not documented | Configure structured/appropriate logging and ensure secrets/payment data are never logged. | TODO |
+| OPS-02 | P1 | Health/readiness checks are not documented | Add production health monitoring appropriate to deployment. | TODO |
+| OPS-03 | P1 | Backup and restore procedure is not documented | Define MySQL backup, restore and disaster recovery before production. | TODO |
+| OPS-04 | P1 | Test coverage requirements are not defined | Add tests for checkout, stock concurrency, coupons, authorization and payment idempotency. | TODO |
+| OPS-05 | P1 | No documented staging/test payment environment workflow | Use Razorpay test mode and separate environment configuration before live credentials. | TODO |
+| OPS-06 | P2 | Deployment profiles are not documented | Separate development, staging and production configuration. | TODO |
+| OPS-07 | P2 | No documented monitoring/alerting policy | Add alerts for application failures, payment webhook failures and inventory anomalies. | TODO |
+| OPS-08 | P2 | No reconciliation jobs defined | Plan reconciliation for payments, expired reservations and orphaned files. | TODO |
+
+---
+
+# Missing / Incomplete Functional Areas
+
+The following are not all bugs; they are functional areas that are either incomplete, intentionally absent or require a business decision before production.
+
+| Area | Current State | Required Decision / Work |
+|---|---|---|
+| Payments | Entity exists but production gateway flow not implemented | Complete Payment redesign + Razorpay |
+| Refunds | Payment status has `REFUNDED` but full provider workflow is absent | Implement after payment success flow |
+| Password reset | Not implemented | Required before public production launch |
+| Shipping | `shippingFee` exists but is currently zero | Define shipping calculation/delivery policy |
+| Inventory reservation expiry | Not implemented | Required for online payment abandonment |
+| Payment retries | Not defined | Required for failed/interrupted checkout |
+| Order address snapshots | Not finalized | Decide before production fulfillment |
+| Audit logs | Not implemented | Recommended for sensitive admin/payment actions |
+| Product stock history | Not implemented | Recommended for operational inventory control |
+| API documentation | Not documented as OpenAPI/Swagger in current project documentation | Add if public/mobile client maintenance benefits |
+| Automated tests | No complete test strategy documented | Required for critical flows |
+| Production profiles | Not documented | Required for safe environment separation |
+
+---
+
+# Master Completion Order
+
+The project should now be completed in this order to avoid rework:
+
+## Phase 1 — Security & Schema Foundation
+
+1. **SEC-01 / ADMIN-01:** Secure `/admin/**`.
+2. **SEC-02:** Externalize and rotate secrets.
+3. **DB-01 / DB-02:** Introduce migrations and create a baseline migration strategy.
+4. **DB-03:** Decide and normalize address identifier migration strategy.
+
+## Phase 2 — Catalog, Money & Cart Integrity
+
+5. **MONEY-01 / MONEY-02 / MONEY-03:** Convert all monetary values to `BigDecimal`.
+6. **CAT-02 / CAT-03 / CAT-05:** Enforce stock, SKU and boolean invariants.
+7. **CART-01 / CART-02 / CART-03:** Validate quantity, stock and availability in cart operations.
+8. **CAT-01:** Revalidate active product/variant state at checkout.
+
+## Phase 3 — Checkout, Inventory, Coupon & Orders
+
+9. **ADDR-01:** Validate address ownership.
+10. **INV-01 / INV-02:** Implement safe atomic inventory reserve/restore.
+11. **INV-03 / ORDER-03:** Implement unpaid-order reservation expiry/release design.
+12. **COUPON-01 / COUPON-02 / COUPON-03:** Make coupon validation and consumption lifecycle safe.
+13. **ORDER-01 / ORDER-02 / ORDER-04 / ORDER-05:** Implement state transitions, centralized cancellation, server-side totals and checkout idempotency.
+14. **CART-06 / ORDER-09:** Move cart clearing to verified payment success flow.
+
+## Phase 4 — Payment & Razorpay
+
+15. **PAY-01 through PAY-11:** Redesign payment model and implement provider order creation, signature verification, webhook verification, idempotency and failure handling.
+16. Implement payment retry behavior.
+17. Implement refund workflow after the core success flow is stable.
+
+## Phase 5 — Production Release Requirements
+
+18. Password change/reset.
+19. Production CORS and environment profiles.
+20. Error handling and API hardening.
+21. Tests for all P0/P1 checkout and payment scenarios.
+22. Logging, health checks, backup/restore and monitoring.
+23. Complete API/Postman documentation.
+
+## Phase 6 — Important Enhancements
+
+24. Address snapshots.
+25. Audit logs.
+26. Stock movement history.
+27. Cloudinary reconciliation.
+28. Admin dashboard metrics.
+29. API versioning and OpenAPI documentation.
+
+---
+
+# Immediate Next Work List — Do Not Skip
+
+The following is the exact active queue before starting Razorpay:
+
+- [ ] **1. Secure `/admin/**`**
+- [ ] **2. Externalize and rotate secrets**
+- [ ] **3. Introduce database migrations**
+- [✓] **4. Convert Product/ProductVariant/Payment money fields to `BigDecimal`**
+- [ ] **5. Add catalog database and entity invariants (SKU, stock, active/default values)**
+- [✓] **6. Fix cart quantity, stock and availability validation**
+- [ ] **7. Validate checkout address ownership**
+- [ ] **8. Implement concurrency-safe inventory reservation/restoration**
+- [ ] **9. Make coupon validation/usage lifecycle atomic**
+- [ ] **10. Enforce order transitions, centralized cancellation and checkout idempotency**
+- [ ] **11. Define unpaid-order expiry and stock release**
+- [ ] **12. Redesign Payment entity**
+- [ ] **13. Implement Razorpay order creation, backend verification and webhooks**
+- [ ] **14. Add payment retry/refund behavior**
+- [ ] **15. Complete production testing and operations requirements**
+
+## Rule for Future Changes
+
+When a new issue is found during implementation, it must be added to this master issue register with:
+
+- Issue ID
+- Severity
+- Affected module
+- Concrete risk
+- Required change
+- Status
+- Dependencies
+
+This prevents discovered issues from being lost between modules.

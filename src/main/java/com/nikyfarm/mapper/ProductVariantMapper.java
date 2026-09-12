@@ -6,8 +6,7 @@ import com.nikyfarm.entity.ProductVariant;
 
 public final class ProductVariantMapper {
 
-    private ProductVariantMapper() {
-    }
+    private ProductVariantMapper() {}
 
     public static ProductVariantResponseDto toResponseDto(ProductVariant variant) {
         return new ProductVariantResponseDto(
@@ -21,8 +20,7 @@ public final class ProductVariantMapper {
                 variant.getStockQuantity(),
                 variant.getSku(),
                 variant.getIsDefault(),
-                variant.getIsActive()
-        );
+                variant.getIsActive());
     }
 
     /** Pre-fills an edit form with the current values of an existing variant. */

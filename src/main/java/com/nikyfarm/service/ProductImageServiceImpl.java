@@ -12,12 +12,11 @@ import com.nikyfarm.mapper.ProductImageMapper;
 import com.nikyfarm.repository.ProductImageRepository;
 import com.nikyfarm.repository.ProductRepository;
 import com.nikyfarm.repository.ProductVariantRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -55,7 +54,8 @@ public class ProductImageServiceImpl implements ProductImageService {
     public ImageUploadResponse uploadVariantImage(Long productId, Long variantId, MultipartFile file) {
         Product product = findProductOrThrow(productId);
         ProductVariant variant = findVariantOrThrow(productId, variantId, product);
-        ImageUploadResult result = cloudinaryService.uploadImage(file, "products/" + productId + "/variants/" + variantId);
+        ImageUploadResult result =
+                cloudinaryService.uploadImage(file, "products/" + productId + "/variants/" + variantId);
         ProductImage saved = saveProductImage(product, variant, result.getImageUrl(), result.getPublicId());
         return new ImageUploadResponse(saved.getId(), result.getImageUrl(), "Variant image uploaded successfully.");
     }
@@ -65,8 +65,8 @@ public class ProductImageServiceImpl implements ProductImageService {
     public BulkImageUploadResponse uploadVariantImagesBulk(Long productId, Long variantId, List<MultipartFile> files) {
         Product product = findProductOrThrow(productId);
         ProductVariant variant = findVariantOrThrow(productId, variantId, product);
-        List<ImageUploadResult> results = cloudinaryService.uploadImages(
-                files, "products/" + productId + "/variants/" + variantId);
+        List<ImageUploadResult> results =
+                cloudinaryService.uploadImages(files, "products/" + productId + "/variants/" + variantId);
         for (ImageUploadResult result : results) {
             if (result.isSuccess()) {
                 saveProductImage(product, variant, result.getImageUrl(), result.getPublicId());
@@ -138,18 +138,21 @@ public class ProductImageServiceImpl implements ProductImageService {
     }
 
     private BulkImageUploadResponse buildBulkResponse(List<ImageUploadResult> results) {
-        int successCount = (int) results.stream().filter(ImageUploadResult::isSuccess).count();
+        int successCount =
+                (int) results.stream().filter(ImageUploadResult::isSuccess).count();
         int failureCount = results.size() - successCount;
         return new BulkImageUploadResponse(successCount, failureCount, results);
     }
 
     private Product findProductOrThrow(Long productId) {
-        return productRepository.findById(productId)
+        return productRepository
+                .findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
     }
 
     private ProductVariant findVariantOrThrow(Long productId, Long variantId, Product product) {
-        ProductVariant variant = productVariantRepository.findById(variantId)
+        ProductVariant variant = productVariantRepository
+                .findById(variantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Variant not found with id: " + variantId));
         if (!variant.getProduct().getId().equals(product.getId())) {
             throw new ResourceNotFoundException("Variant " + variantId + " does not belong to product " + productId);
@@ -158,7 +161,8 @@ public class ProductImageServiceImpl implements ProductImageService {
     }
 
     private ProductImage findImageOrThrow(Long productId, Long imageId) {
-        ProductImage image = productImageRepository.findById(imageId)
+        ProductImage image = productImageRepository
+                .findById(imageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Image not found with id: " + imageId));
         if (!image.getProduct().getId().equals(productId)) {
             throw new ResourceNotFoundException("Image " + imageId + " does not belong to product " + productId);

@@ -11,11 +11,10 @@ import com.nikyfarm.mapper.WishlistMapper;
 import com.nikyfarm.repository.ProductRepository;
 import com.nikyfarm.repository.UserRepository;
 import com.nikyfarm.repository.WishlistRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -31,9 +30,11 @@ public class WishlistServiceImpl implements WishlistService {
         if (wishlistRepository.existsByUserIdAndProductId(userId, dto.getProductId())) {
             throw new DuplicateResourceException("This product is already in your wishlist");
         }
-        Product product = productRepository.findById(dto.getProductId())
+        Product product = productRepository
+                .findById(dto.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + dto.getProductId()));
-        User user = userRepository.findById(userId)
+        User user = userRepository
+                .findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         Wishlist wishlist = new Wishlist();
@@ -45,7 +46,9 @@ public class WishlistServiceImpl implements WishlistService {
     @Override
     @Transactional(readOnly = true)
     public List<WishlistResponseDto> getMine(Long userId) {
-        return wishlistRepository.findByUserId(userId).stream().map(WishlistMapper::toResponseDto).toList();
+        return wishlistRepository.findByUserId(userId).stream()
+                .map(WishlistMapper::toResponseDto)
+                .toList();
     }
 
     @Override
@@ -65,13 +68,15 @@ public class WishlistServiceImpl implements WishlistService {
     @Override
     @Transactional
     public void removeByAdmin(Long itemId) {
-        Wishlist wishlist = wishlistRepository.findById(itemId)
+        Wishlist wishlist = wishlistRepository
+                .findById(itemId)
                 .orElseThrow(() -> new ResourceNotFoundException("Wishlist item not found with id: " + itemId));
         wishlistRepository.delete(wishlist);
     }
 
     private Wishlist findOwnedOrThrow(Long userId, Long itemId) {
-        Wishlist wishlist = wishlistRepository.findById(itemId)
+        Wishlist wishlist = wishlistRepository
+                .findById(itemId)
                 .orElseThrow(() -> new ResourceNotFoundException("Wishlist item not found with id: " + itemId));
         if (wishlist.getUser() == null || !wishlist.getUser().getId().equals(userId)) {
             throw new ResourceNotFoundException("Wishlist item not found with id: " + itemId);

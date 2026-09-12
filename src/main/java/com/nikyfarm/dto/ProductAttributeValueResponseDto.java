@@ -10,6 +10,4 @@ public record ProductAttributeValueResponseDto(
         Attribute.InputType inputType,
         Long attributeOptionsId,
         String attributeOptionValue,
-        String valueText
-) {
-}
+        String valueText) {}

@@ -20,10 +20,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * Server-rendered admin UI for Product CRUD. Delegates to the same {@link ProductService}
- * used by the JSON REST API. Variants, images and EAV attribute values are managed on
- * their own nested screens (see {@code AdminProductVariantController},
- * {@code AdminProductImageController}, {@code AdminProductAttributeValueController}).
+ * Server-rendered admin UI for Product CRUD. Delegates to the same {@link ProductService} used by
+ * the JSON REST API. Variants, images and EAV attribute values are managed on their own nested
+ * screens (see {@code AdminProductVariantController}, {@code AdminProductImageController}, {@code
+ * AdminProductAttributeValueController}).
  */
 @Controller
 @RequestMapping("/admin/products")
@@ -52,10 +52,11 @@ public class AdminProductController {
     }
 
     @PostMapping
-    public String create(@Valid @ModelAttribute("product") ProductRequestDto product,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String create(
+            @Valid @ModelAttribute("product") ProductRequestDto product,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             addFormReferenceData(model, "/admin/products", false);
             return "admin/products/form";
@@ -64,7 +65,8 @@ public class AdminProductController {
             ProductResponseDto created = productService.createProduct(product);
             // Every product should have at least one variant (even a single "default" size/pack),
             // so route straight into adding one instead of back to the list.
-            redirectAttributes.addFlashAttribute("successMessage",
+            redirectAttributes.addFlashAttribute(
+                    "successMessage",
                     "Product created successfully. Now add at least one variant (e.g. its size or pack).");
             return "redirect:/admin/products/" + created.id() + "/variants/new";
         } catch (DuplicateResourceException | BusinessRuleViolationException | ResourceNotFoundException e) {
@@ -83,11 +85,12 @@ public class AdminProductController {
     }
 
     @PostMapping("/{id}")
-    public String update(@PathVariable Long id,
-                          @Valid @ModelAttribute("product") ProductRequestDto product,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String update(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("product") ProductRequestDto product,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             addFormReferenceData(model, "/admin/products/" + id, true);
             return "admin/products/form";

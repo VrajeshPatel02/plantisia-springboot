@@ -3,9 +3,8 @@ package com.nikyfarm.service;
 import com.nikyfarm.dto.BulkImageUploadResponse;
 import com.nikyfarm.dto.ImageUploadResponse;
 import com.nikyfarm.dto.ProductImageResponseDto;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface ProductImageService {
 

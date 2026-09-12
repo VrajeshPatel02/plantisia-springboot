@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * Server-rendered admin UI for AttributeOptions CRUD, nested under an attribute.
- * Delegates to the same {@link AttributeOptionService} used by the JSON REST API.
+ * Server-rendered admin UI for AttributeOptions CRUD, nested under an attribute. Delegates to the
+ * same {@link AttributeOptionService} used by the JSON REST API.
  */
 @Controller
 @RequestMapping("/admin/attributes/{attributeId}/options")
@@ -43,11 +43,12 @@ public class AdminAttributeOptionController {
     }
 
     @PostMapping
-    public String create(@PathVariable Long attributeId,
-                          @Valid @ModelAttribute("option") AttributeOptionRequestDto request,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String create(
+            @PathVariable Long attributeId,
+            @Valid @ModelAttribute("option") AttributeOptionRequestDto request,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             addFormReferenceData(model, attributeId, "/admin/attributes/" + attributeId + "/options", false);
             return "admin/attribute-options/form";
@@ -72,12 +73,13 @@ public class AdminAttributeOptionController {
     }
 
     @PostMapping("/{optionId}")
-    public String update(@PathVariable Long attributeId,
-                          @PathVariable Long optionId,
-                          @Valid @ModelAttribute("option") AttributeOptionRequestDto request,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String update(
+            @PathVariable Long attributeId,
+            @PathVariable Long optionId,
+            @Valid @ModelAttribute("option") AttributeOptionRequestDto request,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             addFormReferenceData(model, attributeId, "/admin/attributes/" + attributeId + "/options/" + optionId, true);
             return "admin/attribute-options/form";
@@ -94,7 +96,8 @@ public class AdminAttributeOptionController {
     }
 
     @PostMapping("/{optionId}/delete")
-    public String delete(@PathVariable Long attributeId, @PathVariable Long optionId, RedirectAttributes redirectAttributes) {
+    public String delete(
+            @PathVariable Long attributeId, @PathVariable Long optionId, RedirectAttributes redirectAttributes) {
         try {
             attributeOptionService.deleteOption(attributeId, optionId);
             redirectAttributes.addFlashAttribute("successMessage", "Option deleted successfully.");

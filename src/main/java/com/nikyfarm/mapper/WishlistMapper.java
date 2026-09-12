@@ -7,12 +7,12 @@ import com.nikyfarm.entity.Wishlist;
 
 public final class WishlistMapper {
 
-    private WishlistMapper() {
-    }
+    private WishlistMapper() {}
 
     public static WishlistResponseDto toResponseDto(Wishlist wishlist) {
         Product product = wishlist.getProduct();
-        String primaryImageUrl = product == null || product.getProductImages() == null ? null
+        String primaryImageUrl = product == null || product.getProductImages() == null
+                ? null
                 : product.getProductImages().stream()
                         .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
                         .map(ProductImage::getImageUrl)
@@ -26,7 +26,6 @@ public final class WishlistMapper {
                 product != null ? product.getName() : null,
                 product != null ? product.getSlug() : null,
                 primaryImageUrl,
-                wishlist.getCreatedAt()
-        );
+                wishlist.getCreatedAt());
     }
 }

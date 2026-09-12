@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * Server-rendered admin UI for User management. No "create user" form -- registration
- * (POST /api/auth/register) owns account creation; admins can only view/edit
- * role+active-status/delete existing accounts.
+ * Server-rendered admin UI for User management. No "create user" form -- registration (POST
+ * /api/auth/register) owns account creation; admins can only view/edit role+active-status/delete
+ * existing accounts.
  */
 @Controller
 @RequestMapping("/admin/users")
@@ -46,11 +46,12 @@ public class AdminUserController {
     }
 
     @PostMapping("/{id}")
-    public String update(@PathVariable Long id,
-                          @Valid @ModelAttribute("user") UserUpdateRequestDto request,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String update(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("user") UserUpdateRequestDto request,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             addFormReferenceData(model, id);
             return "admin/users/form";

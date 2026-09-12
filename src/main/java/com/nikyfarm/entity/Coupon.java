@@ -1,11 +1,10 @@
 package com.nikyfarm.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import lombok.*;
 
 @Getter
 @Setter
@@ -13,9 +12,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "coupons", indexes = {
-        @Index(name = "idx_coupons_code", columnList = "code")
-})
+@Table(
+        name = "coupons",
+        indexes = {@Index(name = "idx_coupons_code", columnList = "code")})
 public class Coupon {
 
     @Id
@@ -43,7 +42,7 @@ public class Coupon {
     private Integer maxUses;
 
     @Builder.Default
-    @Column(name = "times_used")
+    @Column(name = "times_used", nullable = false)
     private Integer timesUsed = 0;
 
     @Column(name = "valid_from")
@@ -57,28 +56,43 @@ public class Coupon {
     private Boolean isActive = true;
 
     public enum DiscountType {
-        PERCENTAGE, FLAT
+        PERCENTAGE,
+        FLAT
     }
 
     public boolean isValid(BigDecimal orderSubtotal) {
-        if (Boolean.FALSE.equals(isActive)) {
+
+        if (orderSubtotal == null || orderSubtotal.compareTo(BigDecimal.ZERO) < 0) {
+
+            return false;
+        }
+
+        if (!Boolean.TRUE.equals(isActive)) {
+
             return false;
         }
 
         LocalDateTime now = LocalDateTime.now();
+
         if (validFrom != null && now.isBefore(validFrom)) {
+
             return false;
         }
 
         if (validUntil != null && now.isAfter(validUntil)) {
+
             return false;
         }
 
-        if (maxUses != null && timesUsed >= maxUses) {
+        Integer currentTimesUsed = timesUsed != null ? timesUsed : 0;
+
+        if (maxUses != null && currentTimesUsed >= maxUses) {
+
             return false;
         }
 
         if (minOrderValue != null && orderSubtotal.compareTo(minOrderValue) < 0) {
+
             return false;
         }
 
@@ -86,31 +100,28 @@ public class Coupon {
     }
 
     public BigDecimal calculateDiscount(BigDecimal orderSubtotal) {
-        if (!isValid(orderSubtotal)) {
+
+        if (orderSubtotal == null || orderSubtotal.compareTo(BigDecimal.ZERO) < 0) {
+
             return BigDecimal.ZERO;
         }
 
         BigDecimal discount = BigDecimal.ZERO;
 
         if (discountType == DiscountType.PERCENTAGE) {
-            discount = orderSubtotal.multiply(discountValue)
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+            discount = orderSubtotal.multiply(discountValue).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
         } else if (discountType == DiscountType.FLAT) {
+
             discount = discountValue;
         }
 
-        // Discount cannot exceed subtotal
         if (discount.compareTo(orderSubtotal) > 0) {
+
             return orderSubtotal;
         }
 
         return discount;
-    }
-
-    public void incrementTimesUsed() {
-        if (this.timesUsed == null) {
-            this.timesUsed = 0;
-        }
-        this.timesUsed++;
     }
 }

@@ -7,10 +7,10 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
- * No {@code productId} -- a review can't be reassigned to a different product, only
- * edited in place. {@code isVerifiedPurchase} is present but only has any effect when the
- * caller is an admin (the service silently ignores it for a customer editing their own
- * review, rather than rejecting the request over one harmless field).
+ * No {@code productId} -- a review can't be reassigned to a different product, only edited in
+ * place. {@code isVerifiedPurchase} is present but only has any effect when the caller is an admin
+ * (the service silently ignores it for a customer editing their own review, rather than rejecting
+ * the request over one harmless field).
  */
 @Data
 public class ReviewUpdateRequestDto {

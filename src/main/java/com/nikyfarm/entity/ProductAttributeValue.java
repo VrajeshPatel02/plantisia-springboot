@@ -9,9 +9,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "product_attribute_value", indexes = {
-        @Index(name = "idx_pav_product", columnList = "product_id")
-})
+@Table(
+        name = "product_attribute_value",
+        indexes = {@Index(name = "idx_pav_product", columnList = "product_id")})
 public class ProductAttributeValue {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -31,5 +31,4 @@ public class ProductAttributeValue {
     @ManyToOne
     @JoinColumn(name = "attribute_options_id")
     private AttributeOptions attributeOptions;
-
 }

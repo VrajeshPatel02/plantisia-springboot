@@ -14,6 +14,9 @@ import com.nikyfarm.service.AttributeService;
 import com.nikyfarm.service.ProductAttributeValueService;
 import com.nikyfarm.service.ProductService;
 import jakarta.validation.Valid;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,15 +24,11 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
- * Server-rendered admin UI for assigning EAV attribute values to a product, nested under
- * a product. The create/edit form is dynamic: the visible input (free text vs. an option
- * picker) depends on the chosen attribute's {@link Attribute.InputType}, driven by a small
- * inline script fed the per-attribute metadata built here.
+ * Server-rendered admin UI for assigning EAV attribute values to a product, nested under a product.
+ * The create/edit form is dynamic: the visible input (free text vs. an option picker) depends on
+ * the chosen attribute's {@link Attribute.InputType}, driven by a small inline script fed the
+ * per-attribute metadata built here.
  */
 @Controller
 @RequestMapping("/admin/products/{productId}/attribute-values")
@@ -56,11 +55,12 @@ public class AdminProductAttributeValueController {
     }
 
     @PostMapping
-    public String create(@PathVariable Long productId,
-                          @Valid @ModelAttribute("value") ProductAttributeValueRequestDto request,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String create(
+            @PathVariable Long productId,
+            @Valid @ModelAttribute("value") ProductAttributeValueRequestDto request,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             addFormReferenceData(model, productId, "/admin/products/" + productId + "/attribute-values", false);
             return "admin/attribute-values/form";
@@ -85,14 +85,16 @@ public class AdminProductAttributeValueController {
     }
 
     @PostMapping("/{valueId}")
-    public String update(@PathVariable Long productId,
-                          @PathVariable Long valueId,
-                          @Valid @ModelAttribute("value") ProductAttributeValueRequestDto request,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String update(
+            @PathVariable Long productId,
+            @PathVariable Long valueId,
+            @Valid @ModelAttribute("value") ProductAttributeValueRequestDto request,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
-            addFormReferenceData(model, productId, "/admin/products/" + productId + "/attribute-values/" + valueId, true);
+            addFormReferenceData(
+                    model, productId, "/admin/products/" + productId + "/attribute-values/" + valueId, true);
             return "admin/attribute-values/form";
         }
         try {
@@ -101,13 +103,15 @@ public class AdminProductAttributeValueController {
             return "redirect:/admin/products/" + productId + "/attribute-values";
         } catch (DuplicateResourceException | BusinessRuleViolationException | ResourceNotFoundException e) {
             model.addAttribute("errorMessage", e.getMessage());
-            addFormReferenceData(model, productId, "/admin/products/" + productId + "/attribute-values/" + valueId, true);
+            addFormReferenceData(
+                    model, productId, "/admin/products/" + productId + "/attribute-values/" + valueId, true);
             return "admin/attribute-values/form";
         }
     }
 
     @PostMapping("/{valueId}/delete")
-    public String delete(@PathVariable Long productId, @PathVariable Long valueId, RedirectAttributes redirectAttributes) {
+    public String delete(
+            @PathVariable Long productId, @PathVariable Long valueId, RedirectAttributes redirectAttributes) {
         try {
             productAttributeValueService.deleteValue(productId, valueId);
             redirectAttributes.addFlashAttribute("successMessage", "Attribute value removed successfully.");
@@ -126,14 +130,15 @@ public class AdminProductAttributeValueController {
             Map<String, Object> meta = new LinkedHashMap<>();
             meta.put("inputType", attribute.inputType().name());
             if (attribute.inputType() == Attribute.InputType.SELECT) {
-                List<Map<String, Object>> options = attributeOptionService.getOptionsByAttribute(attribute.id()).stream()
-                        .map(o -> {
-                            Map<String, Object> m = new LinkedHashMap<>();
-                            m.put("id", o.id());
-                            m.put("value", o.value());
-                            return m;
-                        })
-                        .toList();
+                List<Map<String, Object>> options =
+                        attributeOptionService.getOptionsByAttribute(attribute.id()).stream()
+                                .map(o -> {
+                                    Map<String, Object> m = new LinkedHashMap<>();
+                                    m.put("id", o.id());
+                                    m.put("value", o.value());
+                                    return m;
+                                })
+                                .toList();
                 meta.put("options", options);
             }
             attributeMeta.put(String.valueOf(attribute.id()), meta);

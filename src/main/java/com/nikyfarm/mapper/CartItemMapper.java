@@ -7,14 +7,12 @@ import com.nikyfarm.entity.CartItem;
 import com.nikyfarm.entity.Product;
 import com.nikyfarm.entity.ProductImage;
 import com.nikyfarm.entity.ProductVariant;
-
 import java.math.BigDecimal;
 import java.util.Comparator;
 
 public final class CartItemMapper {
 
-    private CartItemMapper() {
-    }
+    private CartItemMapper() {}
 
     public static CartItemResponseDto toResponseDto(CartItem item) {
         if (item == null) {
@@ -45,10 +43,9 @@ public final class CartItemMapper {
     }
 
     /**
-     * Row for the admin cart-items table (see admin/cart-items/list.html), which lists
-     * items across every user's cart, so — unlike the customer-facing DTO — this needs
-     * the owning user's id on every row. Field is named "createdAt" (not "addedAt") to
-     * match the existing template.
+     * Row for the admin cart-items table (see admin/cart-items/list.html), which lists items across
+     * every user's cart, so — unlike the customer-facing DTO — this needs the owning user's id on
+     * every row. Field is named "createdAt" (not "addedAt") to match the existing template.
      */
     public static CartItemAdminViewDto toAdminViewDto(CartItem item) {
         if (item == null) {
@@ -74,37 +71,38 @@ public final class CartItemMapper {
     }
 
     /**
-     * "Charge the discounted price if present" — the same rule used elsewhere in this
-     * project (e.g. ProductResponseDto). Falls back to `price` when `discountedPrice` is
-     * null, and to zero if the variant itself is missing.
+     * "Charge the discounted price if present" — the same rule used elsewhere in this project (e.g.
+     * ProductResponseDto). Falls back to `price` when `discountedPrice` is null, and to zero if the
+     * variant itself is missing.
      */
     private static BigDecimal resolveEffectivePrice(ProductVariant variant) {
         if (variant == null) {
             return BigDecimal.ZERO;
         }
         if (variant.getDiscountedPrice() != null) {
-            return BigDecimal.valueOf(variant.getDiscountedPrice());
+            return variant.getDiscountedPrice();
         }
-        return variant.getPrice() != null ? BigDecimal.valueOf(variant.getPrice()) : BigDecimal.ZERO;
+        return variant.getPrice() != null ? variant.getPrice() : BigDecimal.ZERO;
     }
 
     /**
-     * Prefers the image flagged isPrimary; falls back to the lowest sortOrder image if
-     * none is flagged, and to null if the product has no images at all.
+     * Prefers the image flagged isPrimary; falls back to the lowest sortOrder image if none is
+     * flagged, and to null if the product has no images at all.
      *
-     * NOTE: adjust getter names here (getIsPrimary/getSortOrder/getImageUrl) if they
-     * differ from the actual ProductImage entity — this file was written from the field
-     * list in the project docs, not the entity source itself.
+     * <p>NOTE: adjust getter names here (getIsPrimary/getSortOrder/getImageUrl) if they differ from
+     * the actual ProductImage entity — this file was written from the field list in the project docs,
+     * not the entity source itself.
      */
     private static String resolvePrimaryImageUrl(Product product) {
-        if (product == null || product.getProductImages() == null || product.getProductImages().isEmpty()) {
+        if (product == null
+                || product.getProductImages() == null
+                || product.getProductImages().isEmpty()) {
             return null;
         }
         return product.getProductImages().stream()
                 .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
                 .findFirst()
-                .or(() -> product.getProductImages().stream()
-                        .min(Comparator.comparing(ProductImage::getSortOrder)))
+                .or(() -> product.getProductImages().stream().min(Comparator.comparing(ProductImage::getSortOrder)))
                 .map(ProductImage::getImageUrl)
                 .orElse(null);
     }

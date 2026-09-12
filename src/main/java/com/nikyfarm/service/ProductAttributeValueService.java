@@ -2,7 +2,6 @@ package com.nikyfarm.service;
 
 import com.nikyfarm.dto.ProductAttributeValueRequestDto;
 import com.nikyfarm.dto.ProductAttributeValueResponseDto;
-
 import java.util.List;
 
 public interface ProductAttributeValueService {

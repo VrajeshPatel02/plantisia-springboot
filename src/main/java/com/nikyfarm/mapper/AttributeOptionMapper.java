@@ -7,8 +7,7 @@ import com.nikyfarm.entity.AttributeOptions;
 
 public final class AttributeOptionMapper {
 
-    private AttributeOptionMapper() {
-    }
+    private AttributeOptionMapper() {}
 
     public static AttributeOptionResponseDto toResponseDto(AttributeOptions option) {
         Attribute attribute = option.getAttribute();
@@ -16,8 +15,7 @@ public final class AttributeOptionMapper {
                 option.getId(),
                 option.getValue(),
                 attribute != null ? attribute.getId() : null,
-                attribute != null ? attribute.getName() : null
-        );
+                attribute != null ? attribute.getName() : null);
     }
 
     /** Pre-fills an edit form with the current values of an existing option. */

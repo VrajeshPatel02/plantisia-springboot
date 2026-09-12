@@ -9,9 +9,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * Creates one ADMIN user on startup if none exists yet -- otherwise nobody could ever
- * call an admin-only endpoint, since registration always creates CUSTOMER accounts.
- * Dev-only convenience; change the seeded password (app.admin.password) after first login.
+ * Creates one ADMIN user on startup if none exists yet -- otherwise nobody could ever call an
+ * admin-only endpoint, since registration always creates CUSTOMER accounts. Dev-only convenience;
+ * change the seeded password (app.admin.password) after first login.
  */
 @Component
 @RequiredArgsConstructor
@@ -28,8 +28,7 @@ public class AdminSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        boolean adminExists = userRepository.findAll().stream()
-                .anyMatch(u -> u.getRole() == User.Role.ADMIN);
+        boolean adminExists = userRepository.findAll().stream().anyMatch(u -> u.getRole() == User.Role.ADMIN);
         if (adminExists) {
             return;
         }

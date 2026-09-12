@@ -4,12 +4,11 @@ import com.nikyfarm.dto.ProductVariantRequestDto;
 import com.nikyfarm.dto.ProductVariantResponseDto;
 import com.nikyfarm.service.ProductVariantService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/products/{productId}/variants")
@@ -20,8 +19,7 @@ public class ProductVariantController {
 
     @PostMapping
     public ResponseEntity<ProductVariantResponseDto> createVariant(
-            @PathVariable Long productId,
-            @RequestBody @Valid ProductVariantRequestDto request) {
+            @PathVariable Long productId, @RequestBody @Valid ProductVariantRequestDto request) {
 
         ProductVariantResponseDto response = productVariantService.createVariant(productId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -38,8 +36,7 @@ public class ProductVariantController {
 
     @GetMapping("/{variantId}")
     public ResponseEntity<ProductVariantResponseDto> getVariant(
-            @PathVariable Long productId,
-            @PathVariable Long variantId) {
+            @PathVariable Long productId, @PathVariable Long variantId) {
 
         return ResponseEntity.ok(productVariantService.getVariantById(productId, variantId));
     }
@@ -50,9 +47,7 @@ public class ProductVariantController {
     }
 
     @DeleteMapping("/{variantId}")
-    public ResponseEntity<Void> deleteVariant(
-            @PathVariable Long productId,
-            @PathVariable Long variantId) {
+    public ResponseEntity<Void> deleteVariant(@PathVariable Long productId, @PathVariable Long variantId) {
 
         productVariantService.deleteVariant(productId, variantId);
         return ResponseEntity.noContent().build();

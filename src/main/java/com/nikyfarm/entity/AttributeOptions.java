@@ -21,5 +21,4 @@ public class AttributeOptions {
     @ManyToOne
     @JoinColumn(name = "attribute_id")
     private Attribute attribute;
-
 }

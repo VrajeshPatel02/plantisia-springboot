@@ -6,9 +6,9 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
- * Deliberately has no {@code role}/{@code isActive} fields -- a user updating "themself"
- * must never be able to bind those, so the escalation-proofing is structural, not just
- * a service-layer check that could be forgotten later.
+ * Deliberately has no {@code role}/{@code isActive} fields -- a user updating "themself" must never
+ * be able to bind those, so the escalation-proofing is structural, not just a service-layer check
+ * that could be forgotten later.
  */
 @Data
 public class UserSelfUpdateRequestDto {

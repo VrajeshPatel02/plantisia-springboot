@@ -4,12 +4,11 @@ import com.nikyfarm.dto.ProductAttributeValueRequestDto;
 import com.nikyfarm.dto.ProductAttributeValueResponseDto;
 import com.nikyfarm.service.ProductAttributeValueService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/products/{productId}/attribute-values")
@@ -20,8 +19,7 @@ public class ProductAttributeValueController {
 
     @PostMapping
     public ResponseEntity<ProductAttributeValueResponseDto> createValue(
-            @PathVariable Long productId,
-            @RequestBody @Valid ProductAttributeValueRequestDto request) {
+            @PathVariable Long productId, @RequestBody @Valid ProductAttributeValueRequestDto request) {
         ProductAttributeValueResponseDto response = productAttributeValueService.createValue(productId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -36,8 +34,7 @@ public class ProductAttributeValueController {
 
     @GetMapping("/{valueId}")
     public ResponseEntity<ProductAttributeValueResponseDto> getValue(
-            @PathVariable Long productId,
-            @PathVariable Long valueId) {
+            @PathVariable Long productId, @PathVariable Long valueId) {
         return ResponseEntity.ok(productAttributeValueService.getValueById(productId, valueId));
     }
 
@@ -47,9 +44,7 @@ public class ProductAttributeValueController {
     }
 
     @DeleteMapping("/{valueId}")
-    public ResponseEntity<Void> deleteValue(
-            @PathVariable Long productId,
-            @PathVariable Long valueId) {
+    public ResponseEntity<Void> deleteValue(@PathVariable Long productId, @PathVariable Long valueId) {
         productAttributeValueService.deleteValue(productId, valueId);
         return ResponseEntity.noContent().build();
     }

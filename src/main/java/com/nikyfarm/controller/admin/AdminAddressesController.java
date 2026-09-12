@@ -2,6 +2,7 @@ package com.nikyfarm.controller.admin;
 
 import com.nikyfarm.dto.AddressResponseDto;
 import com.nikyfarm.service.AddressesService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,11 +14,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.List;
-
 /**
- * Read-only view -- admins can inspect customer addresses for order verification
- * and customer support, but cannot modify address records directly.
+ * Read-only view -- admins can inspect customer addresses for order verification and customer
+ * support, but cannot modify address records directly.
  */
 @Controller
 @RequestMapping("/admin/addresses")

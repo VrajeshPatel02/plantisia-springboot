@@ -10,7 +10,10 @@ public class ProductAttributeValueRequestDto {
     @NotNull(message = "Attribute id is required")
     private Long attributeId;
 
-    /** Required (and validated against the attribute) when the attribute's input type is SELECT; ignored otherwise. */
+    /**
+     * Required (and validated against the attribute) when the attribute's input type is SELECT;
+     * ignored otherwise.
+     */
     private Long attributeOptionsId;
 
     /** Required when the attribute's input type is not SELECT; ignored for SELECT. */

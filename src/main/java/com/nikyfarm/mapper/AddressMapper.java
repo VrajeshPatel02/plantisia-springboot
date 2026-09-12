@@ -4,10 +4,9 @@ import com.nikyfarm.dto.AddressRequestDto;
 import com.nikyfarm.dto.AddressResponseDto;
 import com.nikyfarm.entity.Addresses;
 
-public final class  AddressMapper {
+public final class AddressMapper {
 
-    private AddressMapper(){
-    }
+    private AddressMapper() {}
 
     public static AddressResponseDto toResponseDto(Addresses address) {
         return new AddressResponseDto(
@@ -21,8 +20,7 @@ public final class  AddressMapper {
                 address.getPostalCode(),
                 address.getIsDefault(),
                 address.getCreatedAt(),
-                address.getUser() != null ? address.getUser().getId() : null
-        );
+                address.getUser() != null ? address.getUser().getId() : null);
     }
 
     /** Pre-fills an edit form with the current values of an existing address. */
@@ -37,6 +35,5 @@ public final class  AddressMapper {
         request.setPostalCode(dto.postalCode());
         request.setIsDefault(dto.isDefault());
         return request;
-
     }
 }

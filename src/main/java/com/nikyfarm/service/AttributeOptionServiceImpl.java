@@ -11,11 +11,10 @@ import com.nikyfarm.mapper.AttributeOptionMapper;
 import com.nikyfarm.repository.AttributeOptionsRepository;
 import com.nikyfarm.repository.AttributeRepository;
 import com.nikyfarm.repository.ProductAttributeValueRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -75,19 +74,22 @@ public class AttributeOptionServiceImpl implements AttributeOptionService {
     private void assertValueAvailable(Long attributeId, String value, Long excludeId) {
         boolean taken = excludeId == null
                 ? attributeOptionsRepository.existsByAttributeIdAndValueIgnoreCase(attributeId, value)
-                : attributeOptionsRepository.existsByAttributeIdAndValueIgnoreCaseAndIdNot(attributeId, value, excludeId);
+                : attributeOptionsRepository.existsByAttributeIdAndValueIgnoreCaseAndIdNot(
+                        attributeId, value, excludeId);
         if (taken) {
             throw new DuplicateResourceException("Option '" + value + "' already exists for this attribute");
         }
     }
 
     private Attribute findAttributeOrThrow(Long id) {
-        return attributeRepository.findById(id)
+        return attributeRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attribute not found with id: " + id));
     }
 
     private AttributeOptions findOptionOrThrow(Long attributeId, Long optionId) {
-        AttributeOptions option = attributeOptionsRepository.findById(optionId)
+        AttributeOptions option = attributeOptionsRepository
+                .findById(optionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Attribute option not found with id: " + optionId));
         if (option.getAttribute() == null || !option.getAttribute().getId().equals(attributeId)) {
             throw new ResourceNotFoundException("Option " + optionId + " does not belong to attribute " + attributeId);

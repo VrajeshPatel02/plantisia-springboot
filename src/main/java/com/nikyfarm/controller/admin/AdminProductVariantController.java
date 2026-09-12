@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * Server-rendered admin UI for ProductVariant CRUD, nested under a product.
- * Delegates to the same {@link ProductVariantService} used by the JSON REST API.
+ * Server-rendered admin UI for ProductVariant CRUD, nested under a product. Delegates to the same
+ * {@link ProductVariantService} used by the JSON REST API.
  */
 @Controller
 @RequestMapping("/admin/products/{productId}/variants")
@@ -46,11 +46,12 @@ public class AdminProductVariantController {
     }
 
     @PostMapping
-    public String create(@PathVariable Long productId,
-                          @Valid @ModelAttribute("variant") ProductVariantRequestDto variant,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String create(
+            @PathVariable Long productId,
+            @Valid @ModelAttribute("variant") ProductVariantRequestDto variant,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             addFormReferenceData(model, productId, "/admin/products/" + productId + "/variants", false);
             return "admin/variants/form";
@@ -75,12 +76,13 @@ public class AdminProductVariantController {
     }
 
     @PostMapping("/{variantId}")
-    public String update(@PathVariable Long productId,
-                          @PathVariable Long variantId,
-                          @Valid @ModelAttribute("variant") ProductVariantRequestDto variant,
-                          BindingResult bindingResult,
-                          Model model,
-                          RedirectAttributes redirectAttributes) {
+    public String update(
+            @PathVariable Long productId,
+            @PathVariable Long variantId,
+            @Valid @ModelAttribute("variant") ProductVariantRequestDto variant,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             addFormReferenceData(model, productId, "/admin/products/" + productId + "/variants/" + variantId, true);
             return "admin/variants/form";
@@ -97,7 +99,8 @@ public class AdminProductVariantController {
     }
 
     @PostMapping("/{variantId}/delete")
-    public String delete(@PathVariable Long productId, @PathVariable Long variantId, RedirectAttributes redirectAttributes) {
+    public String delete(
+            @PathVariable Long productId, @PathVariable Long variantId, RedirectAttributes redirectAttributes) {
         try {
             productVariantService.deleteVariant(productId, variantId);
             redirectAttributes.addFlashAttribute("successMessage", "Variant deleted successfully.");

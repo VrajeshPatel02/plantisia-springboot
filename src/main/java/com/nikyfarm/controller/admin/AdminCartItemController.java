@@ -14,9 +14,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * Admin view of cart items across every user's cart — view + remove only, same shape as
- * AdminWishlistController (admins don't add items to someone else's cart). Unchanged
- * from before at the HTTP/template level; only the service behind it now reads through
- * the Cart aggregate instead of a flat CartItems table.
+ * AdminWishlistController (admins don't add items to someone else's cart). Unchanged from before at
+ * the HTTP/template level; only the service behind it now reads through the Cart aggregate instead
+ * of a flat CartItems table.
  */
 @Controller
 @RequestMapping("/admin/cart-items")

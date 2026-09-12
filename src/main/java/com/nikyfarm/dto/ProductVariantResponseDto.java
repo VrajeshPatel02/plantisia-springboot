@@ -1,16 +1,16 @@
 package com.nikyfarm.dto;
 
+import java.math.BigDecimal;
+
 public record ProductVariantResponseDto(
         Long id,
         Long productId,
         String variantLabel,
         String size,
         String colour,
-        Double price,
-        Double discountedPrice,
+        BigDecimal price,
+        BigDecimal discountedPrice,
         Integer stockQuantity,
         String sku,
         Boolean isDefault,
-        Boolean isActive
-) {
-}
+        Boolean isActive) {}

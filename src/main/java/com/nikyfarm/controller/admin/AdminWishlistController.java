@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * View + remove only -- admins don't manually add items to someone else's wishlist,
- * so there's no create form here (see plan: "real-world scope").
+ * View + remove only -- admins don't manually add items to someone else's wishlist, so there's no
+ * create form here (see plan: "real-world scope").
  */
 @Controller
 @RequestMapping("/admin/wishlist")

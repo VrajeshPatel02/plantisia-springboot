@@ -1,20 +1,19 @@
 package com.nikyfarm.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDateTime;
-
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "addresses", indexes = {
-        @Index(name = "idx_addresses_user", columnList = "user_id")
-})
+@Table(
+        name = "addresses",
+        indexes = {@Index(name = "idx_addresses_user", columnList = "user_id")})
 public class Addresses {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,5 +51,4 @@ public class Addresses {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
-
 }

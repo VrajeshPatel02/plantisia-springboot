@@ -2,102 +2,187 @@ package com.nikyfarm.service;
 
 import com.nikyfarm.dto.*;
 import com.nikyfarm.entity.*;
-import com.nikyfarm.entity.Order.*;
+import com.nikyfarm.entity.Order.OrderStatus;
 import com.nikyfarm.exception.BusinessRuleViolationException;
 import com.nikyfarm.exception.ResourceNotFoundException;
 import com.nikyfarm.mapper.OrderMapper;
 import com.nikyfarm.repository.*;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
+
     private final UserRepository userRepository;
+
     private final AddressesRepository addressesRepository;
+
     private final ProductVariantRepository productVariantRepository;
+
     private final CartRepository cartRepository;
-    private final CartService cartService;
-    private final CouponRepository couponRepository;
+
+    private final CouponService couponService;
+
+    private final InventoryService inventoryService;
+
+    // =========================================================
+    // CREATE ORDER FROM CART
+    // =========================================================
 
     @Override
     @Transactional
-    public OrderResponseDto createOrderFromCart(Long userId, Long shippingAddressId, Long billingAddressId, String couponCode) {
-        Cart cart = cartRepository.findByUserId(userId)
+    public OrderResponseDto createOrderFromCart(
+            Long userId, Long shippingAddressId, Long billingAddressId, String couponCode) {
+
+        Cart cart = cartRepository
+                .findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart empty or not found for user ID: " + userId));
 
         if (cart.getItems() == null || cart.getItems().isEmpty()) {
+
             throw new BusinessRuleViolationException("Cannot place order with an empty cart");
         }
 
         List<OrderItemRequestDto> items = new ArrayList<>();
+
         for (CartItem item : cart.getItems()) {
+
+            if (item.getProductVariant() == null) {
+
+                throw new BusinessRuleViolationException("Cart contains an invalid product variant");
+            }
+
             OrderItemRequestDto dto = new OrderItemRequestDto();
+
             dto.setProductVariantId(item.getProductVariant().getId());
+
             dto.setQuantity(item.getQuantity());
+
             items.add(dto);
         }
 
         OrderCreateRequestDto createRequest = new OrderCreateRequestDto();
+
         createRequest.setShippingAddressId(shippingAddressId);
-        createRequest.setBillingAddressId(billingAddressId != null ? billingAddressId : shippingAddressId);
+
+        createRequest.setBillingAddressId(billingAddressId);
+
         createRequest.setCouponCode(couponCode);
+
         createRequest.setItems(items);
 
-        OrderResponseDto response = createDirectOrder(userId, createRequest);
-
-        cartService.clearCart(userId);
-        return response;
+        /*
+         * IMPORTANT:
+         *
+         * Cart is NOT cleared here.
+         *
+         * Cart remains available until
+         * verified payment success.
+         */
+        return createDirectOrder(userId, createRequest);
     }
+
+    // =========================================================
+    // CREATE DIRECT ORDER
+    // =========================================================
 
     @Override
     @Transactional
     public OrderResponseDto createDirectOrder(Long userId, OrderCreateRequestDto request) {
-        User user = userRepository.findById(userId)
+
+        validateOrderRequest(request);
+
+        User user = userRepository
+                .findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
-        Addresses shippingAddress = addressesRepository.findById(request.getShippingAddressId())
-                .orElseThrow(() -> new ResourceNotFoundException("Shipping address not found"));
+        // -----------------------------------------------------
+        // ADDRESS VALIDATION
+        // -----------------------------------------------------
 
-        Addresses billingAddress = request.getBillingAddressId() != null ?
-                addressesRepository.findById(request.getBillingAddressId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Billing address not found")) : shippingAddress;
+        Addresses shippingAddress = findUserAddressOrThrow(request.getShippingAddressId(), userId, "Shipping address");
+
+        Addresses billingAddress = request.getBillingAddressId() != null
+                ? findUserAddressOrThrow(request.getBillingAddressId(), userId, "Billing address")
+                : shippingAddress;
+
+        // -----------------------------------------------------
+        // DUPLICATE VARIANT VALIDATION
+        // -----------------------------------------------------
+
+        validateDuplicateVariants(request.getItems());
+
+        // -----------------------------------------------------
+        // CREATE ORDER
+        // -----------------------------------------------------
 
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
                 .user(user)
                 .shippingAddress(shippingAddress)
                 .billingAddress(billingAddress)
-                .status(Order.OrderStatus.PENDING)
+                .status(OrderStatus.PENDING)
                 .paymentStatus(Order.PaymentStatus.UNPAID)
                 .shippingFee(BigDecimal.ZERO)
                 .build();
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
+        // -----------------------------------------------------
+        // PROCESS ORDER ITEMS
+        // -----------------------------------------------------
+
         for (OrderItemRequestDto itemDto : request.getItems()) {
-            ProductVariant variant = productVariantRepository.findById(itemDto.getProductVariantId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Product variant not found: " + itemDto.getProductVariantId()));
 
-            if (variant.getStockQuantity() < itemDto.getQuantity()) {
-                throw new BusinessRuleViolationException("Insufficient stock for variant: " + variant.getVariantLabel());
-            }
+            validateItemQuantity(itemDto.getQuantity());
 
-            variant.setStockQuantity(variant.getStockQuantity() - itemDto.getQuantity());
-            productVariantRepository.save(variant);
+            ProductVariant variant = productVariantRepository
+                    .findById(itemDto.getProductVariantId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Product variant not found: " + itemDto.getProductVariantId()));
 
-            BigDecimal unitPrice = BigDecimal.valueOf(variant.getDiscountedPrice() != null ? variant.getDiscountedPrice() : variant.getPrice());
+            // ---------------------------------------------
+            // PRODUCT / VARIANT VALIDATION
+            // ---------------------------------------------
+
+            validateVariantForOrder(variant);
+
+            // ---------------------------------------------
+            // STOCK AVAILABILITY VALIDATION
+            //
+            // IMPORTANT:
+            //
+            // This does NOT reserve or deduct stock.
+            //
+            // Final atomic deduction happens only
+            // after verified payment success.
+            // ---------------------------------------------
+
+            validateStockAvailability(variant, itemDto.getQuantity());
+
+            // ---------------------------------------------
+            // LIVE PRICE SNAPSHOT
+            // ---------------------------------------------
+
+            BigDecimal unitPrice = getSellingPrice(variant);
+
             BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(itemDto.getQuantity()));
+
+            // ---------------------------------------------
+            // ORDER ITEM SNAPSHOT
+            // ---------------------------------------------
 
             OrderItems orderItem = OrderItems.builder()
                     .product(variant.getProduct())
@@ -110,119 +195,419 @@ public class OrderServiceImpl implements OrderService {
                     .build();
 
             order.addItem(orderItem);
+
             subtotal = subtotal.add(itemTotal);
         }
 
+        // -----------------------------------------------------
+        // ORDER SUBTOTAL
+        // -----------------------------------------------------
+
         order.setSubtotal(subtotal);
 
+        // -----------------------------------------------------
+        // COUPON VALIDATION
+        // -----------------------------------------------------
+
         BigDecimal discount = BigDecimal.ZERO;
+
         if (request.getCouponCode() != null && !request.getCouponCode().isBlank()) {
-            Coupon coupon = couponRepository.findByCode(request.getCouponCode())
-                    .orElseThrow(() -> new ResourceNotFoundException("Coupon not found: " + request.getCouponCode()));
+
+            Coupon coupon = couponService.validateCouponForOrder(request.getCouponCode(), subtotal);
 
             discount = coupon.calculateDiscount(subtotal);
+
             order.setCoupon(coupon);
         }
 
+        // -----------------------------------------------------
+        // FINAL TOTAL
+        // -----------------------------------------------------
+
+        BigDecimal shippingFee = order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO;
+
+        BigDecimal totalAmount = subtotal.subtract(discount).add(shippingFee);
+
+        if (totalAmount.compareTo(BigDecimal.ZERO) < 0) {
+
+            throw new BusinessRuleViolationException("Order total cannot be negative");
+        }
+
         order.setDiscount(discount);
-        order.setTotalAmount(subtotal.subtract(discount).add(order.getShippingFee()));
+
+        order.setTotalAmount(totalAmount);
+
+        // -----------------------------------------------------
+        // SAVE PENDING ORDER
+        // -----------------------------------------------------
 
         Order savedOrder = orderRepository.save(order);
+
         return OrderMapper.toResponseDto(savedOrder);
     }
+
+    // =========================================================
+    // GET ORDER BY ID
+    // =========================================================
 
     @Override
     @Transactional(readOnly = true)
     public OrderResponseDto getOrderById(Long id, Long currentUserId, boolean isAdmin) {
-        Order order = orderRepository.findById(id)
+
+        Order order = orderRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + id));
 
         if (!isAdmin && !order.getUser().getId().equals(currentUserId)) {
+
             throw new ResourceNotFoundException("Order not found with ID: " + id);
         }
 
         return OrderMapper.toResponseDto(order);
     }
 
+    // =========================================================
+    // GET ORDER BY ORDER NUMBER
+    // =========================================================
+
     @Override
     @Transactional(readOnly = true)
     public OrderResponseDto getOrderByOrderNumber(String orderNumber, Long currentUserId, boolean isAdmin) {
-        Order order = orderRepository.findByOrderNumber(orderNumber)
+
+        Order order = orderRepository
+                .findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderNumber));
 
         if (!isAdmin && !order.getUser().getId().equals(currentUserId)) {
+
             throw new ResourceNotFoundException("Order not found: " + orderNumber);
         }
 
         return OrderMapper.toResponseDto(order);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public Page<OrderResponseDto> getUserOrders(Long userId, Pageable pageable) {
-        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
-                .map(OrderMapper::toResponseDto);
-    }
+    // =========================================================
+    // GET USER ORDERS
+    // =========================================================
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponseDto> getAllOrders(Order.OrderStatus status, Pageable pageable) {
-        if (status != null) {
-            return orderRepository.findByStatusOrderByCreatedAtDesc(status, pageable)
-                    .map(OrderMapper::toResponseDto);
-        }
-        return orderRepository.findAllByOrderByCreatedAtDesc(pageable)
+    public Page<OrderResponseDto> getUserOrders(Long userId, Pageable pageable) {
+
+        return orderRepository
+                .findByUserIdOrderByCreatedAtDesc(userId, pageable)
                 .map(OrderMapper::toResponseDto);
     }
+
+    // =========================================================
+    // GET ALL ORDERS
+    // =========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponseDto> getAllOrders(OrderStatus status, Pageable pageable) {
+
+        if (status != null) {
+
+            return orderRepository
+                    .findByStatusOrderByCreatedAtDesc(status, pageable)
+                    .map(OrderMapper::toResponseDto);
+        }
+
+        return orderRepository.findAllByOrderByCreatedAtDesc(pageable).map(OrderMapper::toResponseDto);
+    }
+
+    // =========================================================
+    // UPDATE ORDER STATUS
+    // =========================================================
 
     @Override
     @Transactional
     public OrderResponseDto updateOrderStatus(Long orderId, OrderStatusUpdateDto statusUpdateDto) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
 
-        order.setStatus(statusUpdateDto.getStatus());
-        if (statusUpdateDto.getPaymentStatus() != null) {
-            order.setPaymentStatus(statusUpdateDto.getPaymentStatus());
+        if (statusUpdateDto == null || statusUpdateDto.getStatus() == null) {
+
+            throw new BusinessRuleViolationException("Order status is required");
         }
 
+        Order order = orderRepository
+                .findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
+
+        OrderStatus currentStatus = order.getStatus();
+
+        OrderStatus requestedStatus = statusUpdateDto.getStatus();
+
+        if (requestedStatus == OrderStatus.CANCELLED) {
+
+            throw new BusinessRuleViolationException("Use the cancel order operation to cancel an order");
+        }
+
+        if (currentStatus == requestedStatus) {
+
+            throw new BusinessRuleViolationException("Order is already in " + requestedStatus + " status");
+        }
+
+        if (!isValidStatusTransition(currentStatus, requestedStatus)) {
+
+            throw new BusinessRuleViolationException(
+                    "Invalid order status transition from " + currentStatus + " to " + requestedStatus);
+        }
+
+        order.setStatus(requestedStatus);
+
         Order updatedOrder = orderRepository.save(order);
+
         return OrderMapper.toResponseDto(updatedOrder);
     }
+
+    // =========================================================
+    // CANCEL ORDER
+    // =========================================================
 
     @Override
     @Transactional
     public OrderResponseDto cancelOrder(Long orderId, Long currentUserId, boolean isAdmin) {
-        Order order = orderRepository.findById(orderId)
+
+        Order order = orderRepository
+                .findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
 
-        if (!isAdmin && !order.getUser().getId().equals(currentUserId)) {
+        // -----------------------------------------------------
+        // OWNERSHIP CHECK
+        // -----------------------------------------------------
+
+        if (!isAdmin && (currentUserId == null || !order.getUser().getId().equals(currentUserId))) {
+
             throw new ResourceNotFoundException("Order not found with ID: " + orderId);
         }
 
-        if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.DELIVERED) {
-            throw new BusinessRuleViolationException("Cannot cancel an order that has already been shipped or delivered");
-        }
+        OrderStatus currentStatus = order.getStatus();
 
-        if (order.getStatus() == OrderStatus.CANCELLED) {
+        // -----------------------------------------------------
+        // ALREADY CANCELLED
+        // -----------------------------------------------------
+
+        if (currentStatus == OrderStatus.CANCELLED) {
+
             throw new BusinessRuleViolationException("Order is already cancelled");
         }
 
-        order.setStatus(OrderStatus.CANCELLED);
+        // -----------------------------------------------------
+        // CANNOT CANCEL SHIPPED / DELIVERED
+        // -----------------------------------------------------
 
-        for (OrderItems item : order.getItems()) {
-            if (item.getProductVariant() != null) {
-                ProductVariant variant = item.getProductVariant();
-                variant.setStockQuantity(variant.getStockQuantity() + item.getQuantity());
-                productVariantRepository.save(variant);
-            }
+        if (currentStatus == OrderStatus.SHIPPED || currentStatus == OrderStatus.DELIVERED) {
+
+            throw new BusinessRuleViolationException(
+                    "Cannot cancel an order that has already been shipped or delivered");
         }
 
+        // -----------------------------------------------------
+        // INVENTORY RESTORATION
+        // -----------------------------------------------------
+        //
+        // Stock is deducted only after payment success.
+        //
+        // Therefore, unpaid orders have no stock
+        // to restore.
+        //
+        // Refund handling for paid orders will be
+        // integrated in PAY-11.
+        // -----------------------------------------------------
+
+        if (order.getPaymentStatus() == Order.PaymentStatus.PAID) {
+
+            restoreOrderInventory(order);
+        }
+
+        // -----------------------------------------------------
+        // UPDATE STATUS
+        // -----------------------------------------------------
+
+        order.setStatus(OrderStatus.CANCELLED);
+
         Order updatedOrder = orderRepository.save(order);
+
         return OrderMapper.toResponseDto(updatedOrder);
     }
 
+    // =========================================================
+    // CHECKOUT VALIDATION
+    // =========================================================
+
+    private void validateOrderRequest(OrderCreateRequestDto request) {
+
+        if (request == null) {
+
+            throw new BusinessRuleViolationException("Order request is required");
+        }
+
+        if (request.getShippingAddressId() == null) {
+
+            throw new BusinessRuleViolationException("Shipping address is required");
+        }
+
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+
+            throw new BusinessRuleViolationException("Order must contain at least one item");
+        }
+    }
+
+    private void validateDuplicateVariants(List<OrderItemRequestDto> items) {
+
+        Set<Long> variantIds = new HashSet<>();
+
+        for (OrderItemRequestDto item : items) {
+
+            if (item == null || item.getProductVariantId() == null) {
+
+                throw new BusinessRuleViolationException("Product variant ID is required");
+            }
+
+            if (!variantIds.add(item.getProductVariantId())) {
+
+                throw new BusinessRuleViolationException(
+                        "Duplicate product variant in order: " + item.getProductVariantId());
+            }
+        }
+    }
+
+    private void validateItemQuantity(Integer quantity) {
+
+        if (quantity == null || quantity <= 0) {
+
+            throw new BusinessRuleViolationException("Quantity must be greater than zero");
+        }
+    }
+
+    // =========================================================
+    // PRODUCT / VARIANT VALIDATION
+    // =========================================================
+
+    private void validateVariantForOrder(ProductVariant variant) {
+
+        if (variant.getProduct() == null) {
+
+            throw new BusinessRuleViolationException("Product variant is not linked to a product");
+        }
+
+        if (!Boolean.TRUE.equals(variant.getProduct().getIsActive())) {
+
+            throw new BusinessRuleViolationException(
+                    "Product is not active: " + variant.getProduct().getName());
+        }
+
+        if (!Boolean.TRUE.equals(variant.getIsActive())) {
+
+            throw new BusinessRuleViolationException("Product variant is not active: " + variant.getVariantLabel());
+        }
+    }
+
+    // =========================================================
+    // STOCK VALIDATION
+    // =========================================================
+
+    private void validateStockAvailability(ProductVariant variant, Integer quantity) {
+
+        Integer stockQuantity = variant.getStockQuantity();
+
+        if (stockQuantity == null || stockQuantity < quantity) {
+
+            throw new BusinessRuleViolationException("Insufficient stock for variant: " + variant.getVariantLabel());
+        }
+    }
+
+    // =========================================================
+    // PRICE
+    // =========================================================
+
+    private BigDecimal getSellingPrice(ProductVariant variant) {
+
+        BigDecimal price = variant.getDiscountedPrice() != null ? variant.getDiscountedPrice() : variant.getPrice();
+
+        if (price == null) {
+
+            throw new BusinessRuleViolationException("Product variant price is not available");
+        }
+
+        if (price.compareTo(BigDecimal.ZERO) < 0) {
+
+            throw new BusinessRuleViolationException("Product variant price cannot be negative");
+        }
+
+        return price;
+    }
+
+    // =========================================================
+    // ADDRESS OWNERSHIP
+    // =========================================================
+
+    private Addresses findUserAddressOrThrow(Long addressId, Long userId, String addressType) {
+
+        if (addressId == null) {
+
+            throw new BusinessRuleViolationException(addressType + " ID is required");
+        }
+
+        return addressesRepository
+                .findByIdAndUserId(addressId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException(addressType + " not found"));
+    }
+
+    // =========================================================
+    // INVENTORY RESTORATION
+    // =========================================================
+
+    private void restoreOrderInventory(Order order) {
+
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+
+            return;
+        }
+
+        for (OrderItems item : order.getItems()) {
+
+            if (item.getProductVariant() == null) {
+
+                continue;
+            }
+
+            inventoryService.restoreStock(item.getProductVariant().getId(), item.getQuantity());
+        }
+    }
+
+    // =========================================================
+    // STATUS TRANSITIONS
+    // =========================================================
+
+    private boolean isValidStatusTransition(OrderStatus currentStatus, OrderStatus requestedStatus) {
+
+        if (currentStatus == null || requestedStatus == null) {
+
+            return false;
+        }
+
+        return switch (currentStatus) {
+            case PENDING -> requestedStatus == OrderStatus.PROCESSING;
+
+            case PROCESSING -> requestedStatus == OrderStatus.SHIPPED;
+
+            case SHIPPED -> requestedStatus == OrderStatus.DELIVERED;
+
+            case DELIVERED, CANCELLED -> false;
+        };
+    }
+
+    // =========================================================
+    // ORDER NUMBER
+    // =========================================================
+
     private String generateOrderNumber() {
-        return "ORD-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+
+        return "ORD-"
+                + System.currentTimeMillis()
+                + "-"
+                + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
     }
 }

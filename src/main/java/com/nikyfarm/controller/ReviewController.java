@@ -5,6 +5,7 @@ import com.nikyfarm.dto.ReviewResponseDto;
 import com.nikyfarm.dto.ReviewUpdateRequestDto;
 import com.nikyfarm.service.ReviewService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,12 +13,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 /**
  * No class-level @RequestMapping — reads/creates are nested under a product
- * ("/api/products/{productId}/reviews"), but a review has its own global id for
- * update/delete ("/api/reviews/{id}"), so each method spells out its full path.
+ * ("/api/products/{productId}/reviews"), but a review has its own global id for update/delete
+ * ("/api/reviews/{id}"), so each method spells out its full path.
  */
 @RestController
 @RequiredArgsConstructor
@@ -31,26 +30,27 @@ public class ReviewController {
     }
 
     @PostMapping("/api/products/{productId}/reviews")
-    public ResponseEntity<ReviewResponseDto> createReview(@PathVariable Long productId,
-                                                            @AuthenticationPrincipal Long userId,
-                                                            @RequestBody @Valid ReviewRequestDto request) {
+    public ResponseEntity<ReviewResponseDto> createReview(
+            @PathVariable Long productId,
+            @AuthenticationPrincipal Long userId,
+            @RequestBody @Valid ReviewRequestDto request) {
         request.setProductId(productId);
         return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.createReview(userId, request));
     }
 
     @PutMapping("/api/reviews/{id}")
-    public ResponseEntity<ReviewResponseDto> updateReview(@PathVariable Long id,
-                                                           @AuthenticationPrincipal Long userId,
-                                                           Authentication authentication,
-                                                           @RequestBody @Valid ReviewUpdateRequestDto request) {
+    public ResponseEntity<ReviewResponseDto> updateReview(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long userId,
+            Authentication authentication,
+            @RequestBody @Valid ReviewUpdateRequestDto request) {
         boolean isAdmin = isAdmin(authentication);
         return ResponseEntity.ok(reviewService.updateReview(id, userId, isAdmin, request));
     }
 
     @DeleteMapping("/api/reviews/{id}")
-    public ResponseEntity<Void> deleteReview(@PathVariable Long id,
-                                              @AuthenticationPrincipal Long userId,
-                                              Authentication authentication) {
+    public ResponseEntity<Void> deleteReview(
+            @PathVariable Long id, @AuthenticationPrincipal Long userId, Authentication authentication) {
         reviewService.deleteReview(id, userId, isAdmin(authentication));
         return ResponseEntity.noContent().build();
     }

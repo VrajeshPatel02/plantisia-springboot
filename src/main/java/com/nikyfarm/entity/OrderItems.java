@@ -1,9 +1,8 @@
 package com.nikyfarm.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.math.BigDecimal;
+import lombok.*;
 
 @Getter
 @Setter
@@ -11,9 +10,9 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "order_items", indexes = {
-        @Index(name = "idx_order_items_order", columnList = "order_id")
-})
+@Table(
+        name = "order_items",
+        indexes = {@Index(name = "idx_order_items_order", columnList = "order_id")})
 public class OrderItems {
 
     @Id

@@ -1,7 +1,6 @@
 package com.nikyfarm.dto;
 
 import com.nikyfarm.entity.User;
-
 import java.time.LocalDateTime;
 
 /** Never includes {@code passwordHash} -- this is what every /api/users endpoint returns. */
@@ -12,6 +11,4 @@ public record UserResponseDto(
         User.Role role,
         Boolean isActive,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
-) {
-}
+        LocalDateTime updatedAt) {}

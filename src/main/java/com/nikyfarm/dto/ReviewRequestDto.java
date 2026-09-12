@@ -7,14 +7,17 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
- * No {@code isVerifiedPurchase} field -- the server always sets that (and currently
- * always to false, since there's no Order-tracking service yet to verify against);
- * a reviewer can never claim their own purchase was verified.
+ * No {@code isVerifiedPurchase} field -- the server always sets that (and currently always to
+ * false, since there's no Order-tracking service yet to verify against); a reviewer can never claim
+ * their own purchase was verified.
  */
 @Data
 public class ReviewRequestDto {
 
-    /** Set by the controller from the path ("/api/products/{productId}/reviews"), not the request body. */
+    /**
+     * Set by the controller from the path ("/api/products/{productId}/reviews"), not the request
+     * body.
+     */
     private Long productId;
 
     @NotNull(message = "Rating is required")

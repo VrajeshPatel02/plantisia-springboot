@@ -14,11 +14,10 @@ import com.nikyfarm.repository.ProductRepository;
 import com.nikyfarm.repository.ReviewImageRepository;
 import com.nikyfarm.repository.ReviewsRepository;
 import com.nikyfarm.repository.UserRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -54,7 +53,8 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional
-    public ReviewResponseDto updateReview(Long reviewId, Long currentUserId, boolean isAdmin, ReviewUpdateRequestDto dto) {
+    public ReviewResponseDto updateReview(
+            Long reviewId, Long currentUserId, boolean isAdmin, ReviewUpdateRequestDto dto) {
         Reviews review = findReviewOwnedOrThrow(reviewId, currentUserId, isAdmin);
         applyContent(review, dto.getRating(), dto.getTitle(), dto.getComment());
         if (dto.getReviewImageId() != null) {
@@ -70,26 +70,32 @@ public class ReviewServiceImpl implements ReviewService {
     @Transactional(readOnly = true)
     public List<ReviewResponseDto> getReviewsByProduct(Long productId) {
         findProductOrThrow(productId);
-        return reviewsRepository.findByProductId(productId).stream().map(ReviewMapper::toResponseDto).toList();
+        return reviewsRepository.findByProductId(productId).stream()
+                .map(ReviewMapper::toResponseDto)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ReviewResponseDto> getAllReviews() {
-        return reviewsRepository.findAll().stream().map(ReviewMapper::toResponseDto).toList();
+        return reviewsRepository.findAll().stream()
+                .map(ReviewMapper::toResponseDto)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public ReviewResponseDto getById(Long reviewId) {
-        return ReviewMapper.toResponseDto(reviewsRepository.findById(reviewId)
+        return ReviewMapper.toResponseDto(reviewsRepository
+                .findById(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found with id: " + reviewId)));
     }
 
     @Override
     @Transactional
     public void removeImage(Long reviewId) {
-        Reviews review = reviewsRepository.findById(reviewId)
+        Reviews review = reviewsRepository
+                .findById(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found with id: " + reviewId));
         if (review.getReviewImage() == null) {
             return;
@@ -104,7 +110,8 @@ public class ReviewServiceImpl implements ReviewService {
     @Transactional
     public void deleteReview(Long reviewId, Long currentUserId, boolean isAdmin) {
         Reviews review = findReviewOwnedOrThrow(reviewId, currentUserId, isAdmin);
-        Long reviewImageId = review.getReviewImage() != null ? review.getReviewImage().getId() : null;
+        Long reviewImageId =
+                review.getReviewImage() != null ? review.getReviewImage().getId() : null;
 
         reviewsRepository.delete(review);
 
@@ -120,7 +127,8 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     private Reviews findReviewOwnedOrThrow(Long reviewId, Long currentUserId, boolean isAdmin) {
-        Reviews review = reviewsRepository.findById(reviewId)
+        Reviews review = reviewsRepository
+                .findById(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found with id: " + reviewId));
         boolean isOwner = review.getUser() != null && review.getUser().getId().equals(currentUserId);
         if (!isOwner && !isAdmin) {
@@ -131,17 +139,20 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     private Product findProductOrThrow(Long productId) {
-        return productRepository.findById(productId)
+        return productRepository
+                .findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
     }
 
     private User findUserOrThrow(Long userId) {
-        return userRepository.findById(userId)
+        return userRepository
+                .findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
     }
 
     private ReviewImage findReviewImageOrThrow(Long id) {
-        return reviewImageRepository.findById(id)
+        return reviewImageRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Review image not found with id: " + id));
     }
 }

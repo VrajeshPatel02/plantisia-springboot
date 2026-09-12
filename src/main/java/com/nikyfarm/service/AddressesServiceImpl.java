@@ -8,13 +8,12 @@ import com.nikyfarm.exception.ResourceNotFoundException;
 import com.nikyfarm.mapper.AddressMapper;
 import com.nikyfarm.repository.AddressesRepository;
 import com.nikyfarm.repository.UserRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +40,8 @@ public class AddressesServiceImpl implements AddressesService {
 
     @Override
     @Transactional
-    public AddressResponseDto updateAddress(Long addressId, AddressRequestDto requestDto, Long currentUserId, boolean isAdmin) {
+    public AddressResponseDto updateAddress(
+            Long addressId, AddressRequestDto requestDto, Long currentUserId, boolean isAdmin) {
         Addresses address = findAddressOrThrow(addressId);
         assertAccessPermission(address, currentUserId, isAdmin);
 
@@ -75,7 +75,8 @@ public class AddressesServiceImpl implements AddressesService {
     @Transactional(readOnly = true)
     public AddressResponseDto getDefaultAddressByUserId(Long userId) {
         assertUserExists(userId);
-        Addresses defaultAddress = addressesRepository.findByUserIdAndIsDefaultTrue(userId)
+        Addresses defaultAddress = addressesRepository
+                .findByUserIdAndIsDefaultTrue(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("No default address found for user id: " + userId));
         return AddressMapper.toResponseDto(defaultAddress);
     }
@@ -95,8 +96,7 @@ public class AddressesServiceImpl implements AddressesService {
     @Override
     @Transactional(readOnly = true)
     public Page<AddressResponseDto> getAllAddresses(Pageable pageable) {
-        return addressesRepository.findAll(pageable)
-                .map(AddressMapper::toResponseDto);
+        return addressesRepository.findAll(pageable).map(AddressMapper::toResponseDto);
     }
 
     @Override
@@ -119,11 +119,10 @@ public class AddressesServiceImpl implements AddressesService {
     }
 
     private void unsetExistingDefaults(Long userId) {
-        addressesRepository.findByUserIdAndIsDefaultTrue(userId)
-                .ifPresent(address -> {
-                    address.setIsDefault(false);
-                    addressesRepository.save(address);
-                });
+        addressesRepository.findByUserIdAndIsDefaultTrue(userId).ifPresent(address -> {
+            address.setIsDefault(false);
+            addressesRepository.save(address);
+        });
     }
 
     private void assertAccessPermission(Addresses address, Long currentUserId, boolean isAdmin) {
@@ -140,12 +139,14 @@ public class AddressesServiceImpl implements AddressesService {
     }
 
     private Addresses findAddressOrThrow(Long id) {
-        return addressesRepository.findById(id)
+        return addressesRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Address not found with id: " + id));
     }
 
     private User findUserOrThrow(Long userId) {
-        return userRepository.findById(userId)
+        return userRepository
+                .findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
     }
 }

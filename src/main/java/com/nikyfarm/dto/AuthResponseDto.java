@@ -1,7 +1,6 @@
 package com.nikyfarm.dto;
 
 import com.nikyfarm.entity.User;
-
 import java.time.LocalDateTime;
 
 public record AuthResponseDto(
@@ -11,6 +10,4 @@ public record AuthResponseDto(
         String name,
         String email,
         User.Role role,
-        LocalDateTime expiresAt
-) {
-}
+        LocalDateTime expiresAt) {}
