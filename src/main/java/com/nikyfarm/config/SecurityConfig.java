@@ -3,8 +3,11 @@ package com.nikyfarm.config;
 import com.nikyfarm.security.JsonAccessDeniedHandler;
 import com.nikyfarm.security.JsonAuthenticationEntryPoint;
 import com.nikyfarm.security.JwtAuthenticationFilter;
+
+import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,13 +25,17 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * Two very different trust zones share this app: - {@code /admin/**} — the server-rendered
- * Thymeleaf admin panel. Left fully open (permitAll). It has no login page or cookie/session
- * plumbing; bearer-token JWT doesn't apply to a multi-page HTML app without a materially different
- * mechanism (JWT-in-cookie + a login form). That's a separate future task. - {@code /api/**} — the
- * JSON REST API consumed by an external client (see the Flutter dev-server CORS origin below). This
- * is where real JWT auth applies: public catalog reads, authenticated actions on your own data,
- * admin-only writes.
+ * Security configuration for the NikyFarm application.
+ *
+ * <p>The application has two trust zones:
+ *
+ * <ul>
+ *   <li>/admin/** - server-rendered Thymeleaf admin panel
+ *   <li>/api/** - JSON REST API consumed by Flutter and other clients
+ * </ul>
+ *
+ * <p>CORS origins are configured externally so that local development and production can use
+ * different origin policies without modifying Java source code.
  */
 @Configuration
 @EnableWebSecurity
@@ -40,6 +47,9 @@ public class SecurityConfig {
     private final JsonAuthenticationEntryPoint jsonAuthenticationEntryPoint;
     private final JsonAccessDeniedHandler jsonAccessDeniedHandler;
 
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOriginPatterns;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -49,87 +59,107 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(handling -> handling.authenticationEntryPoint(jsonAuthenticationEntryPoint)
-                        .accessDeniedHandler(jsonAccessDeniedHandler))
-                .authorizeHttpRequests(auth -> auth
-                        // Admin panel + static assets — open, see class Javadoc.
-                        .requestMatchers("/admin/**", "/css/**", "/js/**", "/favicon.png", "/", "/error")
-                        .permitAll()
-
-                        // Auth endpoints — open, that's the point.
-                        .requestMatchers("/api/auth/**")
-                        .permitAll()
-                        .requestMatchers("/api/payments/webhook")
-                        .permitAll()
-
-                        // Public catalog browsing (GET only — writes are locked down further below).
-                        // "/api/review-images/*" (single segment) deliberately excludes the bare
-                        // "/api/review-images" list, which is the admin moderation endpoint.
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/categories/**",
-                                "/api/products/**",
-                                "/api/attributes/**",
-                                "/api/review-images/*")
-                        .permitAll()
-
-                        // Acting on your own account/wishlist/cart — just needs to be logged in.
-                        .requestMatchers("/api/me/**")
-                        .authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/products/*/reviews")
-                        .authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/reviews/**")
-                        .authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/reviews/**")
-                        .authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/review-images")
-                        .authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/users/me")
-                        .authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/users/me")
-                        .authenticated()
-                        .requestMatchers("/api/addresses/**")
-                        .authenticated()
-
-                        // Everything else under /api/users/** is admin user-management.
-                        .requestMatchers("/api/users/**")
-                        .hasRole("ADMIN")
-
-                        // Everything else under /api/** (catalog writes, review moderation) is
-                        // admin-only.
-                        .requestMatchers("/api/**")
-                        .hasRole("ADMIN")
-                        .anyRequest()
-                        .authenticated())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .sessionManagement(
+                        session ->
+                                session.sessionCreationPolicy(
+                                        SessionCreationPolicy.STATELESS))
+                .exceptionHandling(
+                        handling ->
+                                handling.authenticationEntryPoint(
+                                                jsonAuthenticationEntryPoint)
+                                        .accessDeniedHandler(jsonAccessDeniedHandler))
+                .authorizeHttpRequests(
+                        auth ->
+                                auth.requestMatchers(
+                                                "/admin/**",
+                                                "/css/**",
+                                                "/js/**",
+                                                "/favicon.png",
+                                                "/",
+                                                "/error")
+                                        .permitAll()
+                                        .requestMatchers("/api/auth/**")
+                                        .permitAll()
+                                        .requestMatchers("/api/payments/webhook")
+                                        .permitAll()
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/categories/**",
+                                                "/api/products/**",
+                                                "/api/attributes/**",
+                                                "/api/review-images/*")
+                                        .permitAll()
+                                        .requestMatchers("/api/me/**")
+                                        .authenticated()
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/products/*/reviews")
+                                        .authenticated()
+                                        .requestMatchers(
+                                                HttpMethod.PUT,
+                                                "/api/reviews/**")
+                                        .authenticated()
+                                        .requestMatchers(
+                                                HttpMethod.DELETE,
+                                                "/api/reviews/**")
+                                        .authenticated()
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/review-images")
+                                        .authenticated()
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/users/me")
+                                        .authenticated()
+                                        .requestMatchers(
+                                                HttpMethod.PUT,
+                                                "/api/users/me")
+                                        .authenticated()
+                                        .requestMatchers("/api/addresses/**")
+                                        .authenticated()
+                                        .requestMatchers("/api/users/**")
+                                        .hasRole("ADMIN")
+                                        .requestMatchers("/api/**")
+                                        .hasRole("ADMIN")
+                                        .anyRequest()
+                                        .authenticated())
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * CORS = which origins (domains) are allowed to call this API from a browser. Does NOT affect
-     * Postman — Postman requests always go through regardless of this config. This matters once you
-     * build a frontend (React/Vue/etc.) running on a different origin (e.g. localhost:3000) than your
-     * Spring Boot backend (e.g. localhost:8080).
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // TODO: replace with your actual frontend URL(s) once deployed.
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000", // local frontend dev server (adjust port as needed)
-                "http://localhost:5173", // vite frontend dev server
-                "http://localhost:38790" // Flutter default dev server
-                ));
+        List<String> origins =
+                Arrays.stream(allowedOriginPatterns.split(","))
+                        .map(String::trim)
+                        .filter(origin -> !origin.isBlank())
+                        .toList();
 
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedOriginPatterns(origins);
+
+        configuration.setAllowedMethods(
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE",
+                        "OPTIONS"));
+
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true); // needed if you'll send cookies/auth headers later
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 }
