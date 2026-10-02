@@ -261,6 +261,12 @@ public class PaymentServiceImpl implements PaymentService {
 
             case "payment.failed" -> handlePaymentFailed(webhookPayload);
 
+            case "refund.created" -> handleRefundCreated(webhookPayload);
+
+            case "refund.processed" -> handleRefundProcessed(webhookPayload);
+
+            case "refund.failed" -> handleRefundFailed(webhookPayload);
+
             default -> {
                 // Ignore unsupported events.
             }
@@ -271,81 +277,270 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public void refundOrderPayment(Long orderId) {
 
-        List<Payments> payments = paymentsRepository.findProviderPaymentsByOrderIdForUpdate(orderId);
+        Order order = orderRepository
+                .findByIdForPaymentUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Order not found with ID: " + orderId));
+
+        if (order.getPaymentStatus() == Order.PaymentStatus.REFUNDED
+                || order.getPaymentStatus() == Order.PaymentStatus.REFUND_PENDING) {
+            return;
+        }
+
+        if (order.getPaymentStatus() != Order.PaymentStatus.PAID) {
+            throw new BusinessRuleViolationException(
+                    "Only paid orders can be refunded");
+        }
+
+        List<Payments> payments = paymentsRepository
+                .findProviderPaymentsByOrderIdForUpdate(orderId);
 
         if (payments.isEmpty()) {
-
-            throw new ResourceNotFoundException("No provider payment found for order: " + orderId);
+            throw new ResourceNotFoundException(
+                    "No provider payment found for order: " + orderId);
         }
 
         Payments payment = null;
 
         for (Payments currentPayment : payments) {
-
-            // Refund already completed.
-            // Safe to return because this method is idempotent.
             if (currentPayment.getStatus() == Payments.Status.REFUNDED) {
-
+                order.setPaymentStatus(Order.PaymentStatus.REFUNDED);
+                orderRepository.save(order);
                 return;
             }
 
-            // Find the latest refundable payment.
+            if (currentPayment.getStatus() == Payments.Status.REFUND_PENDING) {
+                order.setPaymentStatus(Order.PaymentStatus.REFUND_PENDING);
+                orderRepository.save(order);
+                return;
+            }
+        }
+
+        for (Payments currentPayment : payments) {
             if (currentPayment.getStatus() == Payments.Status.CAPTURED
                     || currentPayment.getStatus() == Payments.Status.SUCCESS) {
-
                 payment = currentPayment;
                 break;
             }
         }
 
         if (payment == null) {
-
-            throw new BusinessRuleViolationException("No refundable payment found for order: " + orderId);
+            throw new BusinessRuleViolationException(
+                    "No refundable payment found for order: " + orderId);
         }
 
         if (payment.getProviderPaymentId() == null
                 || payment.getProviderPaymentId().isBlank()) {
-
-            throw new BusinessRuleViolationException("Provider payment ID is missing");
+            throw new BusinessRuleViolationException(
+                    "Provider payment ID is missing");
         }
 
-        if (payment.getAmount() == null || payment.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-
-            throw new BusinessRuleViolationException("Payment amount is invalid");
+        if (payment.getAmount() == null
+                || payment.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessRuleViolationException(
+                    "Payment amount is invalid");
         }
 
         try {
-
-            // Create full refund in Razorpay.
-            com.razorpay.Refund razorpayRefund = razorpayClient.payments.refund(payment.getProviderPaymentId());
+            com.razorpay.Refund razorpayRefund =
+                    razorpayClient.payments.refund(payment.getProviderPaymentId());
 
             String refundId = razorpayRefund.get("id");
 
-            // Update local payment record.
+            if (refundId == null || refundId.isBlank()) {
+                throw new BusinessRuleViolationException(
+                        "Razorpay refund was created without a refund ID");
+            }
+
             payment.setProviderRefundId(refundId);
-
             payment.setRefundAmount(payment.getAmount());
-
-            payment.setRefundedAt(LocalDateTime.now());
-
-            payment.setStatus(Payments.Status.REFUNDED);
-
             payment.setFailureCode(null);
-
             payment.setFailureReason(null);
 
-            paymentsRepository.save(payment);
+            String providerRefundStatus = razorpayRefund.get("status");
 
-            // Update order payment status.
-            Order order = payment.getOrder();
+            if ("processed".equalsIgnoreCase(providerRefundStatus)) {
+                completeRefund(payment);
+            } else {
+                payment.setStatus(Payments.Status.REFUND_PENDING);
+                payment.setRefundedAt(null);
+                paymentsRepository.save(payment);
 
-            order.setPaymentStatus(Order.PaymentStatus.REFUNDED);
-
-            orderRepository.save(order);
+                order.setPaymentStatus(Order.PaymentStatus.REFUND_PENDING);
+                orderRepository.save(order);
+            }
 
         } catch (RazorpayException exception) {
+            throw new BusinessRuleViolationException(
+                    "Unable to initiate refund: " + exception.getDescription());
+        }
+    }
 
-            throw new BusinessRuleViolationException("Unable to refund payment: " + exception.getDescription());
+    private void handleRefundCreated(JSONObject webhookPayload) {
+
+        JSONObject refundEntity = getRefundEntity(webhookPayload);
+
+        String refundId = refundEntity.optString("id");
+        String paymentId = refundEntity.optString("payment_id");
+
+        Payments payment = findRefundPaymentForUpdate(refundId, paymentId);
+
+        if (payment == null) {
+            return;
+        }
+
+        if (payment.getStatus() == Payments.Status.REFUNDED) {
+            return;
+        }
+
+        if (refundId != null && !refundId.isBlank()) {
+            payment.setProviderRefundId(refundId);
+        }
+
+        if (payment.getRefundAmount() == null) {
+            payment.setRefundAmount(payment.getAmount());
+        }
+
+        payment.setStatus(Payments.Status.REFUND_PENDING);
+        payment.setRefundedAt(null);
+        payment.setFailureCode(null);
+        payment.setFailureReason(null);
+        paymentsRepository.save(payment);
+
+        Order order = payment.getOrder();
+
+        if (order.getPaymentStatus() == Order.PaymentStatus.PAID) {
+            order.setPaymentStatus(Order.PaymentStatus.REFUND_PENDING);
+            orderRepository.save(order);
+        }
+    }
+
+    private void handleRefundProcessed(JSONObject webhookPayload) {
+
+        JSONObject refundEntity = getRefundEntity(webhookPayload);
+
+        String refundId = refundEntity.optString("id");
+        String paymentId = refundEntity.optString("payment_id");
+
+        Payments payment = findRefundPaymentForUpdate(refundId, paymentId);
+
+        if (payment == null) {
+            return;
+        }
+
+        completeRefund(payment);
+    }
+
+    private void handleRefundFailed(JSONObject webhookPayload) {
+
+        JSONObject refundEntity = getRefundEntity(webhookPayload);
+
+        String refundId = refundEntity.optString("id");
+        String paymentId = refundEntity.optString("payment_id");
+
+        Payments payment = findRefundPaymentForUpdate(refundId, paymentId);
+
+        if (payment == null) {
+            return;
+        }
+
+        if (payment.getStatus() == Payments.Status.REFUNDED) {
+            return;
+        }
+
+        payment.setStatus(Payments.Status.SUCCESS);
+        payment.setFailureCode(refundEntity.optString("error_code", "REFUND_FAILED"));
+        payment.setFailureReason(refundEntity.optString(
+                "error_description", "Razorpay refund failed"));
+        paymentsRepository.save(payment);
+
+        Order order = payment.getOrder();
+
+        if (order.getPaymentStatus() == Order.PaymentStatus.REFUND_PENDING) {
+            order.setPaymentStatus(Order.PaymentStatus.PAID);
+            orderRepository.save(order);
+        }
+    }
+
+    private JSONObject getRefundEntity(JSONObject webhookPayload) {
+
+        return webhookPayload
+                .getJSONObject("payload")
+                .getJSONObject("refund")
+                .getJSONObject("entity");
+    }
+
+    private Payments findRefundPaymentForUpdate(String refundId, String paymentId) {
+
+        if (refundId != null && !refundId.isBlank()) {
+            Payments payment = paymentsRepository
+                    .findByProviderRefundIdForUpdate(refundId)
+                    .orElse(null);
+
+            if (payment != null) {
+                return payment;
+            }
+        }
+
+        if (paymentId != null && !paymentId.isBlank()) {
+            return paymentsRepository
+                    .findByProviderPaymentIdForUpdate(paymentId)
+                    .orElse(null);
+        }
+
+        return null;
+    }
+
+    private void completeRefund(Payments payment) {
+
+        if (payment.getStatus() == Payments.Status.REFUNDED) {
+            return;
+        }
+
+        payment.setStatus(Payments.Status.REFUNDED);
+        payment.setRefundAmount(
+                payment.getRefundAmount() != null
+                        ? payment.getRefundAmount()
+                        : payment.getAmount());
+        payment.setRefundedAt(
+                payment.getRefundedAt() != null
+                        ? payment.getRefundedAt()
+                        : LocalDateTime.now());
+        payment.setFailureCode(null);
+        payment.setFailureReason(null);
+        paymentsRepository.save(payment);
+
+        Order order = orderRepository
+                .findByIdForPaymentUpdate(payment.getOrder().getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Order not found with ID: " + payment.getOrder().getId()));
+
+        if (order.getPaymentStatus() != Order.PaymentStatus.REFUNDED) {
+            order.setPaymentStatus(Order.PaymentStatus.REFUNDED);
+            orderRepository.save(order);
+        }
+
+        if (order.getStatus() != Order.OrderStatus.CANCELLED) {
+            restoreOrderInventory(order);
+            order.setStatus(Order.OrderStatus.CANCELLED);
+            orderRepository.save(order);
+        }
+    }
+
+    private void restoreOrderInventory(Order order) {
+
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            return;
+        }
+
+        for (OrderItems item : order.getItems()) {
+            if (item.getProductVariant() == null) {
+                continue;
+            }
+
+            inventoryService.restoreStock(
+                    item.getProductVariant().getId(),
+                    item.getQuantity());
         }
     }
 

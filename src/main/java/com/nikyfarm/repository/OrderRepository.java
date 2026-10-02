@@ -13,6 +13,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
@@ -41,4 +44,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         where o.id = :orderId
         """)
     Optional<Order> findByIdForPaymentUpdate(@Param("orderId") Long orderId);
+
+    @Query("""
+            select o
+            from Order o
+            where o.status = :status
+              and o.paymentStatus = :paymentStatus
+              and o.createdAt < :cutoff
+            """)
+    List<Order> findExpiredUnpaidOrders(
+            @Param("status") OrderStatus status,
+            @Param("paymentStatus") Order.PaymentStatus paymentStatus,
+            @Param("cutoff") LocalDateTime cutoff);
 }

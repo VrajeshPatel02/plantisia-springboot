@@ -16,8 +16,8 @@ import lombok.*;
 @Table(
         name = "orders",
         indexes = {
-            @Index(name = "idx_orders_user", columnList = "user_id"),
-            @Index(name = "idx_orders_status", columnList = "status")
+                @Index(name = "idx_orders_user", columnList = "user_id"),
+                @Index(name = "idx_orders_status", columnList = "status")
         })
 public class Order {
     @Id
@@ -102,6 +102,7 @@ public class Order {
     public enum PaymentStatus {
         UNPAID,
         PAID,
+        REFUND_PENDING,
         REFUNDED,
         FAILED
     }

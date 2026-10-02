@@ -37,6 +37,8 @@ public class OrderServiceImpl implements OrderService {
 
     private final InventoryService inventoryService;
 
+    private final PaymentService paymentService;
+
     // =========================================================
     // CREATE ORDER FROM CART
     // =========================================================
@@ -323,35 +325,51 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponseDto updateOrderStatus(Long orderId, OrderStatusUpdateDto statusUpdateDto) {
+    public OrderResponseDto updateOrderStatus(
+            Long orderId,
+            OrderStatusUpdateDto statusUpdateDto) {
 
         if (statusUpdateDto == null || statusUpdateDto.getStatus() == null) {
-
             throw new BusinessRuleViolationException("Order status is required");
         }
 
         Order order = orderRepository
                 .findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Order not found with ID: " + orderId));
 
         OrderStatus currentStatus = order.getStatus();
-
         OrderStatus requestedStatus = statusUpdateDto.getStatus();
 
         if (requestedStatus == OrderStatus.CANCELLED) {
-
-            throw new BusinessRuleViolationException("Use the cancel order operation to cancel an order");
+            throw new BusinessRuleViolationException(
+                    "Use the cancel order operation to cancel an order");
         }
 
         if (currentStatus == requestedStatus) {
+            throw new BusinessRuleViolationException(
+                    "Order is already in " + requestedStatus + " status");
+        }
 
-            throw new BusinessRuleViolationException("Order is already in " + requestedStatus + " status");
+        /*
+         * A customer order cannot enter PROCESSING until
+         * payment has been successfully confirmed.
+         */
+        if (currentStatus == OrderStatus.PENDING
+                && requestedStatus == OrderStatus.PROCESSING
+                && order.getPaymentStatus() != Order.PaymentStatus.PAID) {
+
+            throw new BusinessRuleViolationException(
+                    "Order cannot be processed until payment is confirmed");
         }
 
         if (!isValidStatusTransition(currentStatus, requestedStatus)) {
-
             throw new BusinessRuleViolationException(
-                    "Invalid order status transition from " + currentStatus + " to " + requestedStatus);
+                    "Invalid order status transition from "
+                            + currentStatus
+                            + " to "
+                            + requestedStatus);
         }
 
         order.setStatus(requestedStatus);
@@ -367,19 +385,27 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponseDto cancelOrder(Long orderId, Long currentUserId, boolean isAdmin) {
+    public OrderResponseDto cancelOrder(
+            Long orderId,
+            Long currentUserId,
+            boolean isAdmin) {
 
         Order order = orderRepository
                 .findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Order not found with ID: " + orderId));
 
         // -----------------------------------------------------
         // OWNERSHIP CHECK
         // -----------------------------------------------------
 
-        if (!isAdmin && (currentUserId == null || !order.getUser().getId().equals(currentUserId))) {
+        if (!isAdmin
+                && (currentUserId == null
+                || !order.getUser().getId().equals(currentUserId))) {
 
-            throw new ResourceNotFoundException("Order not found with ID: " + orderId);
+            throw new ResourceNotFoundException(
+                    "Order not found with ID: " + orderId);
         }
 
         OrderStatus currentStatus = order.getStatus();
@@ -389,47 +415,82 @@ public class OrderServiceImpl implements OrderService {
         // -----------------------------------------------------
 
         if (currentStatus == OrderStatus.CANCELLED) {
-
-            throw new BusinessRuleViolationException("Order is already cancelled");
+            throw new BusinessRuleViolationException(
+                    "Order is already cancelled");
         }
 
         // -----------------------------------------------------
         // CANNOT CANCEL SHIPPED / DELIVERED
         // -----------------------------------------------------
 
-        if (currentStatus == OrderStatus.SHIPPED || currentStatus == OrderStatus.DELIVERED) {
+        if (currentStatus == OrderStatus.SHIPPED
+                || currentStatus == OrderStatus.DELIVERED) {
 
             throw new BusinessRuleViolationException(
                     "Cannot cancel an order that has already been shipped or delivered");
         }
 
         // -----------------------------------------------------
-        // INVENTORY RESTORATION
-        // -----------------------------------------------------
-        //
-        // Stock is deducted only after payment success.
-        //
-        // Therefore, unpaid orders have no stock
-        // to restore.
-        //
-        // Refund handling for paid orders will be
-        // integrated in PAY-11.
+        // PAID / REFUND PENDING ORDER
         // -----------------------------------------------------
 
         if (order.getPaymentStatus() == Order.PaymentStatus.PAID) {
 
-            restoreOrderInventory(order);
+            paymentService.refundOrderPayment(order.getId());
+
+            order = orderRepository
+                    .findById(orderId)
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException(
+                                    "Order not found with ID: " + orderId));
+
+            if (order.getPaymentStatus() == Order.PaymentStatus.REFUNDED) {
+                // PaymentService has already finalized the refund and, for a
+                // synchronously processed provider refund, cancelled the order.
+                if (order.getStatus() != OrderStatus.CANCELLED) {
+                    throw new BusinessRuleViolationException(
+                            "Refund completed but order cancellation was not finalized");
+                }
+
+                return OrderMapper.toResponseDto(order);
+            }
+
+            if (order.getPaymentStatus() == Order.PaymentStatus.REFUND_PENDING) {
+                // The provider accepted the refund request, but final refund
+                // confirmation is asynchronous. The refund webhook will
+                // complete the refund, restore inventory, and cancel the order.
+                return OrderMapper.toResponseDto(order);
+            }
+
+            throw new BusinessRuleViolationException(
+                    "Order refund could not be confirmed");
+        }
+
+        if (order.getPaymentStatus() == Order.PaymentStatus.REFUND_PENDING) {
+            // Idempotent retry while the provider is processing the refund.
+            return OrderMapper.toResponseDto(order);
         }
 
         // -----------------------------------------------------
-        // UPDATE STATUS
+        // UNPAID / FAILED ORDER
         // -----------------------------------------------------
 
-        order.setStatus(OrderStatus.CANCELLED);
+        /*
+         * No inventory was deducted for unpaid or failed orders,
+         * so there is nothing to restore.
+         */
+        if (order.getPaymentStatus() == Order.PaymentStatus.UNPAID
+                || order.getPaymentStatus() == Order.PaymentStatus.FAILED) {
 
-        Order updatedOrder = orderRepository.save(order);
+            order.setStatus(OrderStatus.CANCELLED);
 
-        return OrderMapper.toResponseDto(updatedOrder);
+            Order updatedOrder = orderRepository.save(order);
+
+            return OrderMapper.toResponseDto(updatedOrder);
+        }
+
+        throw new BusinessRuleViolationException(
+                "Order cannot be cancelled in its current payment state");
     }
 
     // =========================================================

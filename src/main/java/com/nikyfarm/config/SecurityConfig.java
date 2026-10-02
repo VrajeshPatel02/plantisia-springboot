@@ -6,6 +6,7 @@ import com.nikyfarm.security.JwtAuthenticationFilter;
 
 import java.util.Arrays;
 import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -117,12 +118,62 @@ public class SecurityConfig {
                                         .authenticated()
                                         .requestMatchers("/api/addresses/**")
                                         .authenticated()
+
+// Customer order operations.
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/orders/checkout"
+                                        ).authenticated()
+
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/orders/buy-now"
+                                        ).authenticated()
+
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/orders/me"
+                                        ).authenticated()
+
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/orders/*"
+                                        ).authenticated()
+
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/orders/*/cancel"
+                                        ).authenticated()
+
+// Customer payment operations.
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/payments/orders"
+                                        ).authenticated()
+
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/payments/verify"
+                                        ).authenticated()
+
+// Customer coupon operations.
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/coupons"
+                                        ).authenticated()
+
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/coupons/validate"
+                                        ).authenticated()
+
+// Everything else under /api/users/** is admin user-management.
                                         .requestMatchers("/api/users/**")
                                         .hasRole("ADMIN")
+
+// Everything else under /api/** remains admin-only.
                                         .requestMatchers("/api/**")
-                                        .hasRole("ADMIN")
-                                        .anyRequest()
-                                        .authenticated())
+                                        .hasRole("ADMIN"))
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class);

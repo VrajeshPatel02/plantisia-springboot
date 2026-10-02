@@ -129,8 +129,9 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public void clearCart(Long userId) {
-
-        cartRepository.findByUserId(userId).ifPresent(cart -> cartItemRepository.deleteByCartId(cart.getId()));
+        cartRepository.findByUserId(userId).ifPresent(cart -> {
+            cartItemRepository.deleteAllByCartId(cart.getId());
+        });
     }
 
     @Override

@@ -69,4 +69,29 @@ public interface PaymentsRepository extends JpaRepository<Payments, Long> {
                   order by p.createdAt desc
                   """)
     List<Payments> findProviderPaymentsByOrderIdForUpdate(@Param("orderId") Long orderId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+                    select p
+                    from Payments p
+                    join fetch p.order o
+                    join fetch o.user
+                    where p.providerRefundId = :providerRefundId
+                    """)
+    Optional<Payments> findByProviderRefundIdForUpdate(
+            @Param("providerRefundId") String providerRefundId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+                    select p
+                    from Payments p
+                    join fetch p.order o
+                    join fetch o.user
+                    where p.providerPaymentId = :providerPaymentId
+                    """)
+    Optional<Payments> findByProviderPaymentIdForUpdate(
+            @Param("providerPaymentId") String providerPaymentId);
+
 }

@@ -1,5 +1,6 @@
 package com.nikyfarm.controller;
 
+import com.nikyfarm.dto.ReviewEligibilityResponseDto;
 import com.nikyfarm.dto.ReviewRequestDto;
 import com.nikyfarm.dto.ReviewResponseDto;
 import com.nikyfarm.dto.ReviewUpdateRequestDto;
@@ -29,13 +30,21 @@ public class ReviewController {
         return ResponseEntity.ok(reviewService.getReviewsByProduct(productId));
     }
 
+    @GetMapping("/api/products/{productId}/reviews/eligibility")
+    public ResponseEntity<ReviewEligibilityResponseDto> getReviewEligibility(
+            @PathVariable Long productId,
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(reviewService.getReviewEligibility(userId, productId));
+    }
+
     @PostMapping("/api/products/{productId}/reviews")
     public ResponseEntity<ReviewResponseDto> createReview(
             @PathVariable Long productId,
             @AuthenticationPrincipal Long userId,
             @RequestBody @Valid ReviewRequestDto request) {
         request.setProductId(productId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.createReview(userId, request));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(reviewService.createReview(userId, request));
     }
 
     @PutMapping("/api/reviews/{id}")
@@ -44,13 +53,15 @@ public class ReviewController {
             @AuthenticationPrincipal Long userId,
             Authentication authentication,
             @RequestBody @Valid ReviewUpdateRequestDto request) {
-        boolean isAdmin = isAdmin(authentication);
-        return ResponseEntity.ok(reviewService.updateReview(id, userId, isAdmin, request));
+        return ResponseEntity.ok(reviewService.updateReview(
+                id, userId, isAdmin(authentication), request));
     }
 
     @DeleteMapping("/api/reviews/{id}")
     public ResponseEntity<Void> deleteReview(
-            @PathVariable Long id, @AuthenticationPrincipal Long userId, Authentication authentication) {
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long userId,
+            Authentication authentication) {
         reviewService.deleteReview(id, userId, isAdmin(authentication));
         return ResponseEntity.noContent().build();
     }

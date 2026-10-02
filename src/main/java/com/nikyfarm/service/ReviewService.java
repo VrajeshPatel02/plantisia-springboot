@@ -1,5 +1,6 @@
 package com.nikyfarm.service;
 
+import com.nikyfarm.dto.ReviewEligibilityResponseDto;
 import com.nikyfarm.dto.ReviewRequestDto;
 import com.nikyfarm.dto.ReviewResponseDto;
 import com.nikyfarm.dto.ReviewUpdateRequestDto;
@@ -9,7 +10,13 @@ public interface ReviewService {
 
     ReviewResponseDto createReview(Long userId, ReviewRequestDto dto);
 
-    ReviewResponseDto updateReview(Long reviewId, Long currentUserId, boolean isAdmin, ReviewUpdateRequestDto dto);
+    ReviewEligibilityResponseDto getReviewEligibility(Long userId, Long productId);
+
+    ReviewResponseDto updateReview(
+            Long reviewId,
+            Long currentUserId,
+            boolean isAdmin,
+            ReviewUpdateRequestDto dto);
 
     List<ReviewResponseDto> getReviewsByProduct(Long productId);
 
@@ -21,7 +28,7 @@ public interface ReviewService {
     void deleteReview(Long reviewId, Long currentUserId, boolean isAdmin);
 
     /**
-     * Detaches and deletes the review's image (Cloudinary + row), leaving the review itself intact.
+     * Detaches and deletes the review's image, leaving the review itself intact.
      */
     void removeImage(Long reviewId);
 }

@@ -15,7 +15,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-@Component
 @Profile("dev")
 @RequiredArgsConstructor
 public class DevCatalogSeeder implements CommandLineRunner {

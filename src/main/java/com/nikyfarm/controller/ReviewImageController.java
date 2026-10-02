@@ -6,6 +6,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,8 +18,13 @@ public class ReviewImageController {
     private final ReviewImageService reviewImageService;
 
     @PostMapping(consumes = "multipart/form-data")
-    public ResponseEntity<ReviewImageResponseDto> upload(@RequestParam("file") MultipartFile file) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(reviewImageService.upload(file));
+    public ResponseEntity<ReviewImageResponseDto> upload(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam("productId") Long productId,
+            @RequestParam("file") MultipartFile file) {
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(reviewImageService.upload(userId, productId, file));
     }
 
     @GetMapping("/{id}")

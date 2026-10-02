@@ -14,9 +14,9 @@ import lombok.Setter;
 @Table(
         name = "payments",
         indexes = {
-            @Index(name = "idx_payments_order", columnList = "order_id"),
-            @Index(name = "idx_payments_provider_order", columnList = "provider_order_id"),
-            @Index(name = "idx_payments_provider_payment", columnList = "provider_payment_id")
+                @Index(name = "idx_payments_order", columnList = "order_id"),
+                @Index(name = "idx_payments_provider_order", columnList = "provider_order_id"),
+                @Index(name = "idx_payments_provider_payment", columnList = "provider_payment_id")
         })
 public class Payments {
 
@@ -128,6 +128,8 @@ public class Payments {
         CAPTURED,
 
         SUCCESS,
+
+        REFUND_PENDING,
 
         FAILED,
 

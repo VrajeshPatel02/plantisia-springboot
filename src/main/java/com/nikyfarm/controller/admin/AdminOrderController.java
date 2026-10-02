@@ -55,7 +55,7 @@ public class AdminOrderController {
 
             model.addAttribute("orderStatuses", OrderStatus.values());
 
-            return "admin/orders/detail";
+            return "admin/orders/details";
 
         } catch (ResourceNotFoundException e) {
 
