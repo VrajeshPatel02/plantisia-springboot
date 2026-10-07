@@ -97,6 +97,15 @@ public class SecurityConfig {
                                                 "/api/products/*/reviews")
                                         .authenticated()
                                         .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/reviews/*/media")
+                                        .authenticated()
+
+                                        .requestMatchers(
+                                                HttpMethod.DELETE,
+                                                "/api/reviews/media/*")
+                                        .authenticated()
+                                        .requestMatchers(
                                                 HttpMethod.PUT,
                                                 "/api/reviews/**")
                                         .authenticated()

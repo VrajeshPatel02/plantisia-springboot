@@ -2,6 +2,8 @@ package com.nikyfarm.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,6 +18,7 @@ import org.hibernate.annotations.UpdateTimestamp;
         name = "reviews",
         indexes = {@Index(name = "idx_reviews_product", columnList = "product_id")})
 public class Reviews {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -48,7 +51,25 @@ public class Reviews {
     @JoinColumn(name = "user_id")
     private User user;
 
+    /**
+     * Legacy single-image relationship.
+     * <p>
+     * Kept temporarily for backward compatibility while existing
+     * review_images data is migrated to review_media.
+     */
     @ManyToOne
     @JoinColumn(name = "review_image_id")
     private ReviewImage reviewImage;
+
+    /**
+     * New review media collection.
+     * <p>
+     * A review can contain multiple images and/or videos.
+     */
+    @OneToMany(
+            mappedBy = "review",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true)
+    @OrderBy("sortOrder ASC, id ASC")
+    private List<ReviewMedia> media = new ArrayList<>();
 }

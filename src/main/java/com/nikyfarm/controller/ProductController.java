@@ -40,13 +40,14 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<Page<ProductResponseDto>> getProducts(
             @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") Sort.Direction direction) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        return ResponseEntity.ok(productService.getProducts(categoryId, pageable));
+        return ResponseEntity.ok(productService.getProducts(categoryId, search, pageable));
     }
 
     @DeleteMapping("/{id}")
