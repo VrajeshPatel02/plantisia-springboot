@@ -7,12 +7,14 @@ import com.nikyfarm.entity.CartItem;
 import com.nikyfarm.entity.Product;
 import com.nikyfarm.entity.ProductImage;
 import com.nikyfarm.entity.ProductVariant;
+
 import java.math.BigDecimal;
 import java.util.Comparator;
 
 public final class CartItemMapper {
 
-    private CartItemMapper() {}
+    private CartItemMapper() {
+    }
 
     public static CartItemResponseDto toResponseDto(CartItem item) {
         if (item == null) {
@@ -21,9 +23,13 @@ public final class CartItemMapper {
 
         ProductVariant variant = item.getProductVariant();
         Product product = variant != null ? variant.getProduct() : null;
+
         BigDecimal unitPrice = resolveEffectivePrice(variant);
-        BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
-        Integer availableStock = variant != null ? variant.getStockQuantity() : null;
+        BigDecimal lineTotal =
+                unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
+
+        Integer availableStock =
+                variant != null ? variant.getStockQuantity() : null;
 
         return CartItemResponseDto.builder()
                 .id(item.getId())
@@ -37,15 +43,18 @@ public final class CartItemMapper {
                 .quantity(item.getQuantity())
                 .lineTotal(lineTotal)
                 .availableStock(availableStock)
-                .stockInsufficient(availableStock != null && item.getQuantity() > availableStock)
+                .stockInsufficient(
+                        availableStock != null
+                                && item.getQuantity() > availableStock
+                )
                 .addedAt(item.getAddedAt())
                 .build();
     }
 
     /**
-     * Row for the admin cart-items table (see admin/cart-items/list.html), which lists items across
-     * every user's cart, so — unlike the customer-facing DTO — this needs the owning user's id on
-     * every row. Field is named "createdAt" (not "addedAt") to match the existing template.
+     * Row for the admin cart-items table.
+     *
+     * Unlike the customer-facing DTO, this includes the owning user's id.
      */
     public static CartItemAdminViewDto toAdminViewDto(CartItem item) {
         if (item == null) {
@@ -54,14 +63,22 @@ public final class CartItemMapper {
 
         ProductVariant variant = item.getProductVariant();
         Cart cart = item.getCart();
+
         BigDecimal unitPrice = resolveEffectivePrice(variant);
-        BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
-        Long userId = (cart != null && cart.getUser() != null) ? cart.getUser().getId() : null;
+        BigDecimal lineTotal =
+                unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
+
+        Long userId =
+                (cart != null && cart.getUser() != null)
+                        ? cart.getUser().getId()
+                        : null;
 
         return CartItemAdminViewDto.builder()
                 .id(item.getId())
                 .userId(userId)
-                .variantLabel(variant != null ? variant.getVariantLabel() : null)
+                .variantLabel(
+                        variant != null ? variant.getVariantLabel() : null
+                )
                 .sku(variant != null ? variant.getSku() : null)
                 .unitPrice(unitPrice)
                 .quantity(item.getQuantity())
@@ -71,27 +88,33 @@ public final class CartItemMapper {
     }
 
     /**
-     * "Charge the discounted price if present" — the same rule used elsewhere in this project (e.g.
-     * ProductResponseDto). Falls back to `price` when `discountedPrice` is null, and to zero if the
-     * variant itself is missing.
+     * Uses discountedPrice when available.
+     * Falls back to regular price.
+     * Falls back to zero if the variant is missing or has no price.
      */
     private static BigDecimal resolveEffectivePrice(ProductVariant variant) {
         if (variant == null) {
             return BigDecimal.ZERO;
         }
+
         if (variant.getDiscountedPrice() != null) {
             return variant.getDiscountedPrice();
         }
-        return variant.getPrice() != null ? variant.getPrice() : BigDecimal.ZERO;
+
+        return variant.getPrice() != null
+                ? variant.getPrice()
+                : BigDecimal.ZERO;
     }
 
     /**
-     * Prefers the image flagged isPrimary; falls back to the lowest sortOrder image if none is
-     * flagged, and to null if the product has no images at all.
+     * Resolves the primary product image.
      *
-     * <p>NOTE: adjust getter names here (getIsPrimary/getSortOrder/getImageUrl) if they differ from
-     * the actual ProductImage entity — this file was written from the field list in the project docs,
-     * not the entity source itself.
+     * Priority:
+     * 1. Image explicitly marked as primary.
+     * 2. Image with the lowest non-null sortOrder.
+     * 3. If sortOrder is null for all images, falls back safely to
+     *    the first available image.
+     * 4. null when the product has no images.
      */
     private static String resolvePrimaryImageUrl(Product product) {
         if (product == null
@@ -99,10 +122,21 @@ public final class CartItemMapper {
                 || product.getProductImages().isEmpty()) {
             return null;
         }
+
         return product.getProductImages().stream()
                 .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
                 .findFirst()
-                .or(() -> product.getProductImages().stream().min(Comparator.comparing(ProductImage::getSortOrder)))
+                .or(() ->
+                        product.getProductImages().stream()
+                                .min(
+                                        Comparator.comparing(
+                                                ProductImage::getSortOrder,
+                                                Comparator.nullsLast(
+                                                        Integer::compareTo
+                                                )
+                                        )
+                                )
+                )
                 .map(ProductImage::getImageUrl)
                 .orElse(null);
     }
