@@ -24,6 +24,7 @@ public final class CartItemMapper {
         ProductVariant variant = item.getProductVariant();
         Product product = variant != null ? variant.getProduct() : null;
 
+        BigDecimal originalPrice = resolveOriginalPrice(variant);
         BigDecimal unitPrice = resolveEffectivePrice(variant);
         BigDecimal lineTotal =
                 unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
@@ -39,6 +40,7 @@ public final class CartItemMapper {
                 .productId(product != null ? product.getId() : null)
                 .productName(product != null ? product.getName() : null)
                 .primaryImageUrl(resolvePrimaryImageUrl(product))
+                .originalPrice(originalPrice)
                 .unitPrice(unitPrice)
                 .quantity(item.getQuantity())
                 .lineTotal(lineTotal)
@@ -85,6 +87,18 @@ public final class CartItemMapper {
                 .lineTotal(lineTotal)
                 .createdAt(item.getAddedAt())
                 .build();
+    }
+
+    /**
+     * Returns the regular variant price before discount.
+     * A missing variant or price is represented as zero in the response.
+     */
+    private static BigDecimal resolveOriginalPrice(ProductVariant variant) {
+        if (variant == null || variant.getPrice() == null) {
+            return BigDecimal.ZERO;
+        }
+
+        return variant.getPrice();
     }
 
     /**

@@ -456,9 +456,13 @@ public class OrderServiceImpl implements OrderService {
             }
 
             if (order.getPaymentStatus() == Order.PaymentStatus.REFUND_PENDING) {
-                // The provider accepted the refund request, but final refund
-                // confirmation is asynchronous. The refund webhook will
-                // complete the refund, restore inventory, and cancel the order.
+                // The order is cancelled once the refund request is accepted.
+                // Payment remains REFUND_PENDING until the provider confirms it;
+                // inventory is restored only after refund completion.
+                if (order.getStatus() != OrderStatus.CANCELLED) {
+                    order.setStatus(OrderStatus.CANCELLED);
+                    order = orderRepository.save(order);
+                }
                 return OrderMapper.toResponseDto(order);
             }
 
@@ -468,6 +472,10 @@ public class OrderServiceImpl implements OrderService {
 
         if (order.getPaymentStatus() == Order.PaymentStatus.REFUND_PENDING) {
             // Idempotent retry while the provider is processing the refund.
+            if (order.getStatus() != OrderStatus.CANCELLED) {
+                order.setStatus(OrderStatus.CANCELLED);
+                order = orderRepository.save(order);
+            }
             return OrderMapper.toResponseDto(order);
         }
 

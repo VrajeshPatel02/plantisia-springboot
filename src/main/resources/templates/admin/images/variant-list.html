@@ -5,7 +5,7 @@
 <nav th:replace="~{admin/fragments/nav :: nav}"></nav>
 <div class="container">
     <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
-    <p><a th:href="@{'/admin/products/' + ${productId} + '/variants'}">&larr; Back to Variants</a></p>
+    <p><a th:href="@{'/admin/products/' + ${productId} + '/edit'}">&larr; Back to Product Form</a></p>
     <h1 class="mb-4">Images for <span th:text="${variant.variantLabel}"></span> <small class="text-muted" th:text="'(' + ${variant.sku} + ')'"></small></h1>
 
     <div class="card mb-4">
@@ -39,6 +39,7 @@
         <tr th:each="image : ${images}">
             <td>
                 <img th:src="${image.imageUrl}" alt="" style="height:60px;width:60px;object-fit:cover;border-radius:4px;">
+                <button type="button" class="btn btn-sm btn-outline-secondary image-preview-trigger" data-image-preview data-preview-gallery="variant-images" th:attr="data-image-src=${image.imageUrl},data-image-alt='Variant image'" title="Preview images" aria-label="Preview images"><i class="bi bi-eye"></i></button>
             </td>
             <td>
                 <span th:if="${image.isPrimary}" class="badge bg-primary">Primary</span>
@@ -63,6 +64,89 @@
         </tbody>
     </table>
 </div>
+
+<!-- Reusable image preview carousel dialog -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-labelledby="imagePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="imagePreviewModalLabel">Image preview</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-2 p-md-3">
+                <div id="imagePreviewCarousel" class="carousel slide" data-bs-interval="false">
+                    <div class="carousel-inner" id="imagePreviewSlides"></div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#imagePreviewCarousel" data-bs-slide="prev" aria-label="Previous image">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span><span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#imagePreviewCarousel" data-bs-slide="next" aria-label="Next image">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span><span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+                <div class="text-center small text-white-50 mt-2" id="imagePreviewCounter" aria-live="polite"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    .image-preview-trigger { vertical-align: middle; }
+    #imagePreviewCarousel .carousel-item { height: min(72vh, 760px); text-align: center; }
+    #imagePreviewCarousel .carousel-item img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+    #imagePreviewCarousel .carousel-control-prev, #imagePreviewCarousel .carousel-control-next { width: 12%; }
+    .variant-image-preview .image-preview-trigger { display: block; margin-top: .35rem; }
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modalElement = document.getElementById('imagePreviewModal');
+        if (!modalElement || !window.bootstrap) return;
+        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+        const carouselElement = document.getElementById('imagePreviewCarousel');
+        const carousel = bootstrap.Carousel.getOrCreateInstance(carouselElement, { interval: false, ride: false, wrap: true });
+        const slides = document.getElementById('imagePreviewSlides');
+        const counter = document.getElementById('imagePreviewCounter');
+        let activeImages = [];
+
+        function renderCounter() {
+            const activeIndex = Array.from(slides.children).findIndex(slide => slide.classList.contains('active'));
+            counter.textContent = activeImages.length ? `${Math.max(activeIndex, 0) + 1} / ${activeImages.length}` : '';
+        }
+
+        document.addEventListener('click', function (event) {
+            const trigger = event.target.closest('[data-image-preview]');
+            if (!trigger) return;
+            event.preventDefault();
+            const gallery = trigger.getAttribute('data-preview-gallery');
+            const galleryTriggers = Array.from(document.querySelectorAll('[data-image-preview]'))
+                .filter(item => item.getAttribute('data-preview-gallery') === gallery);
+            activeImages = galleryTriggers.map(item => ({
+                src: item.getAttribute('data-image-src'),
+                alt: item.getAttribute('data-image-alt') || 'Image preview'
+            })).filter(item => item.src);
+            const startIndex = Math.max(0, galleryTriggers.indexOf(trigger));
+            slides.replaceChildren();
+            activeImages.forEach((image, index) => {
+                const item = document.createElement('div');
+                item.className = 'carousel-item' + (index === startIndex ? ' active' : '');
+                const img = document.createElement('img');
+                img.src = image.src;
+                img.alt = image.alt;
+                img.className = 'd-block mx-auto';
+                item.appendChild(img);
+                slides.appendChild(item);
+            });
+            carousel.to(startIndex);
+            renderCounter();
+            modal.show();
+        });
+        carouselElement.addEventListener('slid.bs.carousel', renderCounter);
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            slides.replaceChildren();
+            activeImages = [];
+            counter.textContent = '';
+        });
+    });
+</script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

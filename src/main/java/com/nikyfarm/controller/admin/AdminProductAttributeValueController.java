@@ -48,9 +48,9 @@ public class AdminProductAttributeValueController {
     }
 
     @GetMapping("/new")
-    public String newForm(@PathVariable Long productId, Model model) {
+    public String newForm(@PathVariable Long productId, @RequestParam(defaultValue = "0") int page, @RequestParam(required = false) String search, Model model) {
         model.addAttribute("value", new ProductAttributeValueRequestDto());
-        addFormReferenceData(model, productId, "/admin/products/" + productId + "/attribute-values", false);
+        addFormReferenceData(model, productId, "/admin/products/" + productId + "/attribute-values", false, page, search);
         return "admin/attribute-values/form";
     }
 
@@ -60,27 +60,29 @@ public class AdminProductAttributeValueController {
             @Valid @ModelAttribute("value") ProductAttributeValueRequestDto request,
             BindingResult bindingResult,
             Model model,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes,
+            @RequestParam(defaultValue = "0") int returnPage,
+            @RequestParam(required = false) String search) {
         if (bindingResult.hasErrors()) {
-            addFormReferenceData(model, productId, "/admin/products/" + productId + "/attribute-values", false);
+            addFormReferenceData(model, productId, "/admin/products/" + productId + "/attribute-values", false, returnPage, search);
             return "admin/attribute-values/form";
         }
         try {
             productAttributeValueService.createValue(productId, request);
             redirectAttributes.addFlashAttribute("successMessage", "Attribute value added successfully.");
-            return "redirect:/admin/products/" + productId + "/attribute-values";
+            return redirectToProductEdit(productId, returnPage, search);
         } catch (DuplicateResourceException | BusinessRuleViolationException | ResourceNotFoundException e) {
             model.addAttribute("errorMessage", e.getMessage());
-            addFormReferenceData(model, productId, "/admin/products/" + productId + "/attribute-values", false);
+            addFormReferenceData(model, productId, "/admin/products/" + productId + "/attribute-values", false, returnPage, search);
             return "admin/attribute-values/form";
         }
     }
 
     @GetMapping("/{valueId}/edit")
-    public String editForm(@PathVariable Long productId, @PathVariable Long valueId, Model model) {
+    public String editForm(@PathVariable Long productId, @PathVariable Long valueId, @RequestParam(defaultValue = "0") int page, @RequestParam(required = false) String search, Model model) {
         ProductAttributeValueResponseDto existing = productAttributeValueService.getValueById(productId, valueId);
         model.addAttribute("value", ProductAttributeValueMapper.toRequestDto(existing));
-        addFormReferenceData(model, productId, "/admin/products/" + productId + "/attribute-values/" + valueId, true);
+        addFormReferenceData(model, productId, "/admin/products/" + productId + "/attribute-values/" + valueId, true, page, search);
         return "admin/attribute-values/form";
     }
 
@@ -91,20 +93,22 @@ public class AdminProductAttributeValueController {
             @Valid @ModelAttribute("value") ProductAttributeValueRequestDto request,
             BindingResult bindingResult,
             Model model,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes,
+            @RequestParam(defaultValue = "0") int returnPage,
+            @RequestParam(required = false) String search) {
         if (bindingResult.hasErrors()) {
             addFormReferenceData(
-                    model, productId, "/admin/products/" + productId + "/attribute-values/" + valueId, true);
+                    model, productId, "/admin/products/" + productId + "/attribute-values/" + valueId, true, returnPage, search);
             return "admin/attribute-values/form";
         }
         try {
             productAttributeValueService.updateValue(productId, valueId, request);
             redirectAttributes.addFlashAttribute("successMessage", "Attribute value updated successfully.");
-            return "redirect:/admin/products/" + productId + "/attribute-values";
+            return redirectToProductEdit(productId, returnPage, search);
         } catch (DuplicateResourceException | BusinessRuleViolationException | ResourceNotFoundException e) {
             model.addAttribute("errorMessage", e.getMessage());
             addFormReferenceData(
-                    model, productId, "/admin/products/" + productId + "/attribute-values/" + valueId, true);
+                    model, productId, "/admin/products/" + productId + "/attribute-values/" + valueId, true, returnPage, search);
             return "admin/attribute-values/form";
         }
     }
@@ -121,7 +125,7 @@ public class AdminProductAttributeValueController {
         return "redirect:/admin/products/" + productId + "/attribute-values";
     }
 
-    private void addFormReferenceData(Model model, Long productId, String formAction, boolean isEdit) {
+    private void addFormReferenceData(Model model, Long productId, String formAction, boolean isEdit, int page, String search) {
         ProductResponseDto product = productService.getProductById(productId);
         List<AttributeResponseDto> attributes = attributeService.getAttributes(product.categoryId());
 
@@ -149,5 +153,18 @@ public class AdminProductAttributeValueController {
         model.addAttribute("attributeMetaJson", attributeMeta);
         model.addAttribute("formAction", formAction);
         model.addAttribute("isEdit", isEdit);
+        model.addAttribute("returnPage", Math.max(page, 0));
+        model.addAttribute("search", search == null ? "" : search.trim());
+        model.addAttribute("productEditUrl", buildProductEditUrl(productId, page, search));
+    }
+
+    private String redirectToProductEdit(Long productId, int page, String search) {
+        return "redirect:" + buildProductEditUrl(productId, page, search);
+    }
+
+    private String buildProductEditUrl(Long productId, int page, String search) {
+        String url = "/admin/products/" + productId + "/edit?page=" + Math.max(page, 0);
+        String query = search == null ? "" : search.trim();
+        return query.isBlank() ? url : url + "&search=" + java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8);
     }
 }

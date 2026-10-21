@@ -5,73 +5,438 @@
 <nav th:replace="~{admin/fragments/nav :: nav}"></nav>
 <div class="container">
     <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
-    <p><a th:href="@{'/admin/products/' + ${product.id} + '/variants'}">&larr; Back to Variants</a></p>
+    <p><a th:href="${productEditUrl}">&larr; Back to Product Form</a></p>
     <h1 class="mb-4" th:text="(${isEdit} ? 'Edit' : 'New') + ' Variant for ' + ${product.slug}"></h1>
 
-    <form th:action="@{${formAction}}" th:object="${variant}" method="post" class="row g-3">
+    <!-- Editing stays as the existing single-variant workflow. Creating supports multiple individual requests. -->
+    <div th:if="${isEdit}">
+        <form th:action="@{${formAction}}" th:object="${variant}" method="post" class="row g-3">
+            <input type="hidden" name="returnPage" th:value="${returnPage}">
+            <input type="hidden" name="search" th:value="${search}">
 
-        <div class="col-md-6">
-            <label class="form-label">Variant Label</label>
-            <input type="text" class="form-control" th:field="*{variantLabel}"
-                   th:classappend="${#fields.hasErrors('variantLabel')} ? 'is-invalid' : _">
-            <div class="invalid-feedback" th:if="${#fields.hasErrors('variantLabel')}" th:errors="*{variantLabel}"></div>
-        </div>
-
-        <div class="col-md-3">
-            <label class="form-label">Size</label>
-            <input type="text" class="form-control" th:field="*{size}">
-        </div>
-
-        <div class="col-md-3">
-            <label class="form-label">Colour</label>
-            <input type="text" class="form-control" th:field="*{colour}">
-        </div>
-
-        <div class="col-md-3">
-            <label class="form-label">SKU</label>
-            <input type="text" class="form-control" th:field="*{sku}"
-                   th:classappend="${#fields.hasErrors('sku')} ? 'is-invalid' : _">
-            <div class="invalid-feedback" th:if="${#fields.hasErrors('sku')}" th:errors="*{sku}"></div>
-        </div>
-
-        <div class="col-md-3">
-            <label class="form-label">Price</label>
-            <input type="number" step="0.01" min="0" class="form-control" th:field="*{price}"
-                   th:classappend="${#fields.hasErrors('price')} ? 'is-invalid' : _">
-            <div class="invalid-feedback" th:if="${#fields.hasErrors('price')}" th:errors="*{price}"></div>
-        </div>
-
-        <div class="col-md-3">
-            <label class="form-label">Discounted Price</label>
-            <input type="number" step="0.01" min="0" class="form-control" th:field="*{discountedPrice}"
-                   th:classappend="${#fields.hasErrors('discountedPrice')} ? 'is-invalid' : _">
-            <div class="invalid-feedback" th:if="${#fields.hasErrors('discountedPrice')}" th:errors="*{discountedPrice}"></div>
-        </div>
-
-        <div class="col-md-3">
-            <label class="form-label">Stock Quantity</label>
-            <input type="number" min="0" class="form-control" th:field="*{stockQuantity}"
-                   th:classappend="${#fields.hasErrors('stockQuantity')} ? 'is-invalid' : _">
-            <div class="invalid-feedback" th:if="${#fields.hasErrors('stockQuantity')}" th:errors="*{stockQuantity}"></div>
-        </div>
-
-        <div class="col-md-3 d-flex align-items-end">
-            <div class="form-check me-3">
-                <input class="form-check-input" type="checkbox" th:field="*{isDefault}">
-                <label class="form-check-label">Default variant</label>
+            <div class="col-md-6">
+                <label class="form-label">Variant Label</label>
+                <input type="text" class="form-control" th:field="*{variantLabel}" id="variantLabel"
+                       th:classappend="${#fields.hasErrors('variantLabel')} ? 'is-invalid' : _">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('variantLabel')}" th:errors="*{variantLabel}"></div>
             </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" th:field="*{isActive}">
-                <label class="form-check-label">Active</label>
+
+            <div class="col-md-3">
+                <label class="form-label">Size</label>
+                <input type="text" class="form-control" th:field="*{size}" id="variantSize">
             </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Colour</label>
+                <input type="text" class="form-control" th:field="*{colour}" id="variantColour">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label" for="sku">SKU</label>
+                <input type="text" class="form-control" th:field="*{sku}" id="sku" autocomplete="off"
+                       th:classappend="${#fields.hasErrors('sku')} ? 'is-invalid' : _">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('sku')}" th:errors="*{sku}"></div>
+                <div class="form-text" id="skuHelp">Suggested SKU is generated automatically. You can edit it before saving.</div>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="regenerateSku">Regenerate suggestion</button>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Price</label>
+                <input type="number" step="0.01" min="0" class="form-control" th:field="*{price}"
+                       th:classappend="${#fields.hasErrors('price')} ? 'is-invalid' : _">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('price')}" th:errors="*{price}"></div>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Discounted Price</label>
+                <input type="number" step="0.01" min="0" class="form-control" th:field="*{discountedPrice}"
+                       th:classappend="${#fields.hasErrors('discountedPrice')} ? 'is-invalid' : _">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('discountedPrice')}" th:errors="*{discountedPrice}"></div>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Stock Quantity</label>
+                <input type="number" min="0" class="form-control" th:field="*{stockQuantity}"
+                       th:classappend="${#fields.hasErrors('stockQuantity')} ? 'is-invalid' : _">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('stockQuantity')}" th:errors="*{stockQuantity}"></div>
+            </div>
+
+            <div class="col-md-3 d-flex align-items-end">
+                <div class="form-check me-3">
+                    <input class="form-check-input" type="checkbox" th:field="*{isDefault}">
+                    <label class="form-check-label">Default variant</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" th:field="*{isActive}">
+                    <label class="form-check-label">Active</label>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a th:href="${productEditUrl}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <section th:if="${!isEdit}" id="multiVariantCreator" th:attr="data-product-slug=${product.slug},data-product-id=${product.id},data-product-edit-url=${productEditUrl}">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+            <div>
+                <h2 class="h4 mb-1">Create variants</h2>
+                <p class="text-muted mb-0">Add as many variant blocks as you need. Each block is submitted as a separate request using the existing controller and service.</p>
+            </div>
+            <span class="badge text-bg-light border" id="variantCount">1 variant</span>
         </div>
 
-        <div class="col-12">
-            <button type="submit" class="btn btn-primary">Save</button>
-            <a th:href="@{'/admin/products/' + ${product.id} + '/variants'}" class="btn btn-outline-secondary">Cancel</a>
-        </div>
-    </form>
+        <form th:action="@{${formAction}}" method="post" id="multiVariantForm">
+            <input type="hidden" name="returnPage" th:value="${returnPage}">
+            <input type="hidden" name="search" th:value="${search}">
+            <div id="variantBlocks" class="d-grid gap-3">
+                <article class="variant-entry border border-2 rounded-3 p-3 p-md-4" data-variant-entry>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="h5 mb-0">Variant <span data-variant-number>1</span></h3>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-remove-variant disabled>Remove</button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Variant Label <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" data-field="variantLabel" required maxlength="100" placeholder="e.g. Marigold">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Size</label>
+                            <input type="text" class="form-control" data-field="size" placeholder="e.g. Small">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Colour</label>
+                            <input type="text" class="form-control" data-field="colour" placeholder="e.g. Red">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">SKU <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" data-field="sku" required autocomplete="off" placeholder="Generated SKU; editable">
+                            <div class="form-text">Suggested format: NIK-PLT-PRODUCT-SIZE</div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-regenerate-sku>Regenerate suggestion</button>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Price <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" class="form-control" data-field="price" required placeholder="0.00">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Discounted Price</label>
+                            <input type="number" step="0.01" min="0" class="form-control" data-field="discountedPrice" placeholder="Optional">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Stock Quantity <span class="text-danger">*</span></label>
+                            <input type="number" min="0" step="1" class="form-control" data-field="stockQuantity" required value="0">
+                        </div>
+                        <div class="col-md-8 d-flex align-items-end gap-4 flex-wrap">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" data-field="isDefault">
+                                <label class="form-check-label">Default variant</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" data-field="isActive" checked>
+                                <label class="form-check-label">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="small text-danger mt-3 d-none" data-entry-error role="alert"></div>
+                </article>
+            </div>
+
+            <button type="button" id="addVariantBlock" class="add-variant-block w-100 mt-3 p-4 rounded-3">
+                <span class="fs-4 d-block mb-1">＋</span>
+                <span class="fw-semibold">Add variant block</span>
+                <span class="small text-muted d-block">Click to add another variant</span>
+            </button>
+
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <button type="submit" class="btn btn-primary" id="saveAllVariants">Save all variants</button>
+                <a th:href="${productEditUrl}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+            <div class="mt-3 d-none" id="variantSubmissionStatus" role="status" aria-live="polite"></div>
+        </form>
+    </section>
+
+    <style>
+        .variant-entry { border-style: solid !important; border-color: var(--bs-border-color, #dee2e6) !important; background: var(--bs-body-bg, #fff); }
+        .add-variant-block { border: 2px dashed #9aa69a; background: transparent; color: var(--bs-body-color, #212529); text-align: center; transition: background .15s ease, border-color .15s ease; }
+        .add-variant-block:hover, .add-variant-block:focus-visible { border-color: #63816a; background: rgba(99,129,106,.07); }
+        .add-variant-block:disabled { opacity: .6; cursor: wait; }
+    </style>
 </div>
+<script th:if="${isEdit}">
+    (() => {
+        // SKU generator for the single-variant edit form.
+        if (!document.getElementById('sku')) return;
+        const skuInput = document.getElementById('sku');
+        const labelInput = document.getElementById('variantLabel');
+        const sizeInput = document.getElementById('variantSize');
+        const colourInput = document.getElementById('variantColour');
+        const regenerateButton = document.getElementById('regenerateSku');
+        if (!skuInput || !labelInput || !sizeInput || !colourInput) return;
+
+        // Product slug is already provided by the controller and used in the page heading.
+        const productSlug = document.querySelector('h1')?.textContent || '';
+        const isEdit = true;
+        const initialSku = (skuInput.value || '').trim();
+        let manuallyEdited = initialSku.length > 0;
+        let generatedSku = '';
+
+        const clean = value => (value || '').normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+
+        // Generates a compact suggestion from the slug. Example: marigold -> MA.
+        // Product codes are suggestions; edit the SKU when your inventory code differs.
+        function productCode() {
+            const words = clean(productSlug).split(/\s+/).filter(Boolean);
+            if (!words.length) return 'PR';
+            if (words.length > 1) return words.map(word => word[0]).join('').slice(0, 3);
+            return words[0].slice(0, 2);
+        }
+
+        function compactCode(value, fallback) {
+            const normalized = clean(value);
+            if (!normalized) return fallback;
+            const words = normalized.split(/\s+/).filter(Boolean);
+            if (words.length > 1) return words.map(word => word[0]).join('').slice(0, 3);
+            return normalized.slice(0, 2);
+        }
+
+        function sizeCode() {
+            const size = clean(sizeInput.value);
+            if (!size) return 'SZ';
+            const known = {
+                SMALL: 'SM', 'EXTRA SMALL': 'XS', MEDIUM: 'MD', LARGE: 'LG',
+                'EXTRA LARGE': 'XL', 'DOUBLE EXTRA LARGE': 'XXL', MINI: 'MN',
+                '8 INCH': '8IN', '10 INCH': '10IN', '12 INCH': '12IN'
+            };
+            return known[size] || compactCode(size, 'SZ');
+        }
+
+        function variantPartCode() {
+            return compactCode(labelInput.value, 'VAR');
+        }
+
+        function buildSku() {
+            // SKU convention: NIK-PLT-PRODUCT-SIZE. Variant label and colour are intentionally excluded.
+            return ['NIK', 'PLT', productCode(), sizeCode()].join('-');
+        }
+
+        function updateSuggestion(force = false) {
+            generatedSku = buildSku();
+            if (force || !manuallyEdited || !skuInput.value.trim()) {
+                skuInput.value = generatedSku;
+                manuallyEdited = false;
+            }
+        }
+
+        // Preserve existing SKUs on edit. New/blank SKUs are auto-filled.
+        if (!initialSku && !isEdit) updateSuggestion(true);
+        else if (!initialSku) updateSuggestion(true);
+
+        [labelInput, sizeInput].forEach(input => {
+            input.addEventListener('input', () => updateSuggestion(false));
+        });
+        skuInput.addEventListener('input', () => {
+            manuallyEdited = skuInput.value.trim() !== generatedSku;
+        });
+        if (regenerateButton) {
+            regenerateButton.addEventListener('click', () => {
+                manuallyEdited = false;
+                updateSuggestion(true);
+            });
+        }
+    })();
+</script>
+<script>
+    (() => {
+        const root = document.getElementById('multiVariantCreator');
+        if (!root) return;
+
+        const form = document.getElementById('multiVariantForm');
+        const blocks = document.getElementById('variantBlocks');
+        const addButton = document.getElementById('addVariantBlock');
+        const countLabel = document.getElementById('variantCount');
+        const saveButton = document.getElementById('saveAllVariants');
+        const status = document.getElementById('variantSubmissionStatus');
+        const productSlug = (root.dataset.productSlug || '').trim();
+        const createUrl = form.action;
+        const productId = root.dataset.productId || '';
+        const productEditUrl = root.dataset.productEditUrl || ('/admin/products/' + encodeURIComponent(productId) + '/edit');
+
+        const clean = value => (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+        const compactCode = (value, fallback) => {
+            const normalized = clean(value);
+            if (!normalized) return fallback;
+            const words = normalized.split(/\s+/).filter(Boolean);
+            return words.length > 1 ? words.map(word => word[0]).join('').slice(0, 3) : normalized.slice(0, 2);
+        };
+        const productCode = () => compactCode(productSlug, 'PR');
+        const sizeCode = value => {
+            const normalized = clean(value);
+            const known = { 'EXTRA SMALL':'XS', SMALL:'SM', MEDIUM:'MD', LARGE:'LG', 'EXTRA LARGE':'XL', 'DOUBLE EXTRA LARGE':'XXL', MINI:'MN', '8 INCH':'8IN', '10 INCH':'10IN', '12 INCH':'12IN' };
+            return known[normalized] || compactCode(normalized, 'SZ');
+        };
+        // SKU convention: NIK-PLT-PRODUCT-SIZE. Variant label and colour are intentionally excluded.
+        const buildSku = entry => ['NIK', 'PLT', productCode(), sizeCode(getValue(entry, 'size'))].join('-');
+        const getInput = (entry, field) => entry.querySelector('[data-field="' + field + '"]');
+        const getValue = (entry, field) => (getInput(entry, field)?.value || '').trim();
+
+        function updateCountAndLabels() {
+            const entries = [...blocks.querySelectorAll('[data-variant-entry]')];
+            countLabel.textContent = entries.length + (entries.length === 1 ? ' variant' : ' variants');
+            entries.forEach((entry, index) => {
+                entry.querySelector('[data-variant-number]').textContent = index + 1;
+                entry.querySelector('[data-remove-variant]').disabled = entries.length === 1;
+            });
+        }
+
+        function wireEntry(entry) {
+            const sku = getInput(entry, 'sku');
+            let manuallyEdited = false;
+            let generatedSku = '';
+            const updateSku = force => {
+                generatedSku = buildSku(entry);
+                if (force || !manuallyEdited || !sku.value.trim()) {
+                    sku.value = generatedSku;
+                    manuallyEdited = false;
+                }
+            };
+            ['variantLabel', 'size'].forEach(field => getInput(entry, field).addEventListener('input', () => updateSku(false)));
+            sku.addEventListener('input', () => { manuallyEdited = sku.value.trim() !== generatedSku; });
+            entry.querySelector('[data-regenerate-sku]').addEventListener('click', () => updateSku(true));
+            entry.querySelector('[data-remove-variant]').addEventListener('click', () => {
+                if (blocks.querySelectorAll('[data-variant-entry]').length <= 1) return;
+                entry.remove();
+                updateCountAndLabels();
+            });
+            updateSku(true);
+        }
+
+        const firstEntry = blocks.querySelector('[data-variant-entry]');
+        const entryTemplate = firstEntry.cloneNode(true);
+        wireEntry(firstEntry);
+        updateCountAndLabels();
+
+        addButton.addEventListener('click', () => {
+            const entry = entryTemplate.cloneNode(true);
+            entry.querySelectorAll('input').forEach(input => {
+                if (input.type === 'checkbox') input.checked = input.dataset.field === 'isActive';
+                else input.value = '';
+                input.classList.remove('is-invalid');
+            });
+            const error = entry.querySelector('[data-entry-error]');
+            error.textContent = '';
+            error.classList.add('d-none');
+            blocks.appendChild(entry);
+            wireEntry(entry);
+            updateCountAndLabels();
+            entry.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            getInput(entry, 'variantLabel').focus({ preventScroll: true });
+        });
+
+        function showStatus(message, type) {
+            status.className = 'mt-3 alert alert-' + type;
+            status.textContent = message;
+            status.classList.remove('d-none');
+        }
+
+        function validateEntry(entry) {
+            let valid = true;
+            ['variantLabel', 'sku', 'price', 'stockQuantity'].forEach(field => {
+                const input = getInput(entry, field);
+                const value = input.value.trim();
+                const fieldValid = value !== '' && (!['price', 'stockQuantity'].includes(field) || Number(value) >= 0);
+                input.classList.toggle('is-invalid', !fieldValid);
+                if (!fieldValid) valid = false;
+            });
+            return valid;
+        }
+
+        function formDataFor(entry, csrfName, csrfValue) {
+            const params = new URLSearchParams();
+            ['variantLabel', 'size', 'colour', 'sku', 'price', 'discountedPrice', 'stockQuantity'].forEach(field => {
+                const input = getInput(entry, field);
+                if (input && input.value.trim() !== '') params.set(field, input.value.trim());
+            });
+            params.set('isDefault', String(getInput(entry, 'isDefault').checked));
+            params.set('isActive', String(getInput(entry, 'isActive').checked));
+            const returnPageInput = form.querySelector('input[name="returnPage"]');
+            const searchInput = form.querySelector('input[name="search"]');
+            if (returnPageInput) params.set('returnPage', returnPageInput.value);
+            if (searchInput) params.set('search', searchInput.value);
+            if (csrfName && csrfValue) params.set(csrfName, csrfValue);
+            return params;
+        }
+
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            const entries = [...blocks.querySelectorAll('[data-variant-entry]')];
+            let allValid = true;
+            entries.forEach(entry => {
+                const error = entry.querySelector('[data-entry-error]');
+                error.classList.add('d-none');
+                error.textContent = '';
+                if (!validateEntry(entry)) allValid = false;
+            });
+            if (!allValid) {
+                showStatus('Please complete the required fields in every variant block before saving.', 'warning');
+                return;
+            }
+
+            const skus = entries.map(entry => getValue(entry, 'sku').toUpperCase());
+            const duplicateSku = skus.find((sku, index) => skus.indexOf(sku) !== index);
+            if (duplicateSku) {
+                showStatus('Duplicate SKU found in these blocks: ' + duplicateSku + '. Each variant must have a unique SKU.', 'warning');
+                return;
+            }
+
+            const csrfInput = form.querySelector('input[name="_csrf"]');
+            const csrfName = csrfInput?.name || null;
+            const csrfValue = csrfInput?.value || null;
+            saveButton.disabled = true;
+            addButton.disabled = true;
+            showStatus('Saving variants one at a time…', 'info');
+            let saved = 0;
+
+            try {
+                for (let index = 0; index < entries.length; index++) {
+                    const entry = entries[index];
+                    const response = await fetch(createUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', 'Accept': 'text/html' },
+                        body: formDataFor(entry, csrfName, csrfValue).toString(),
+                        credentials: 'same-origin',
+                        redirect: 'follow'
+                    });
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const returnedVariantForm = !!doc.querySelector('[data-variant-entry]') || !!doc.querySelector('#variantLabel');
+                    if (!response.ok || returnedVariantForm) {
+                        const errorText = doc.querySelector('.alert-danger, .invalid-feedback:not(:empty)')?.textContent?.trim();
+                        entry.querySelector('[data-entry-error]').textContent = 'This variant could not be saved.' + (errorText ? ' ' + errorText : ' Check SKU uniqueness and required fields.');
+                        entry.querySelector('[data-entry-error]').classList.remove('d-none');
+                        entry.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        showStatus(saved + ' of ' + entries.length + ' variants saved. Saving stopped at variant ' + (index + 1) + '. The earlier successful variants remain saved; correct this block and submit the remaining variants separately.', 'danger');
+                        return;
+                    }
+                    saved++;
+                    showStatus('Saved ' + saved + ' of ' + entries.length + ' variants…', 'info');
+                }
+                showStatus('All ' + saved + ' variants saved successfully. Returning to the product form…', 'success');
+                window.location.href = productEditUrl;
+            } catch (error) {
+                showStatus(saved + ' of ' + entries.length + ' variants saved before a network error. Do not resubmit those saved variants with the same SKUs.', 'danger');
+            } finally {
+                saveButton.disabled = false;
+                addButton.disabled = false;
+            }
+        });
+    })();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

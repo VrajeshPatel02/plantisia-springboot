@@ -367,6 +367,9 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentsRepository.save(payment);
 
                 order.setPaymentStatus(Order.PaymentStatus.REFUND_PENDING);
+                // Cancellation is effective once the provider accepts the refund
+                // request; the payment remains pending until Razorpay confirms it.
+                order.setStatus(Order.OrderStatus.CANCELLED);
                 orderRepository.save(order);
             }
 
@@ -411,8 +414,15 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (order.getPaymentStatus() == Order.PaymentStatus.PAID) {
             order.setPaymentStatus(Order.PaymentStatus.REFUND_PENDING);
-            orderRepository.save(order);
         }
+
+        // Keep the order state consistent if the refund-created webhook arrives
+        // before the synchronous cancellation request finishes processing.
+        if (order.getPaymentStatus() == Order.PaymentStatus.REFUND_PENDING
+                && order.getStatus() != Order.OrderStatus.CANCELLED) {
+            order.setStatus(Order.OrderStatus.CANCELLED);
+        }
+        orderRepository.save(order);
     }
 
     private void handleRefundProcessed(JSONObject webhookPayload) {
@@ -520,11 +530,16 @@ public class PaymentServiceImpl implements PaymentService {
             orderRepository.save(order);
         }
 
+        // The order may already be marked CANCELLED while the refund is pending.
+        // Restore inventory on refund completion, not when cancellation is first
+        // requested. The REFUNDED guard at the start of this method makes this
+        // operation idempotent for duplicate refund webhooks.
+        restoreOrderInventory(order);
+
         if (order.getStatus() != Order.OrderStatus.CANCELLED) {
-            restoreOrderInventory(order);
             order.setStatus(Order.OrderStatus.CANCELLED);
-            orderRepository.save(order);
         }
+        orderRepository.save(order);
     }
 
     private void restoreOrderInventory(Order order) {

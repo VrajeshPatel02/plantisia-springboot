@@ -21,11 +21,15 @@ public class User {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "email")
+    @Column(name = "email", unique = true)
     private String email;
 
     @Column(name = "password_hash")
     private String passwordHash;
+
+    /** Google account "sub" claim. Null for users who have never signed in with Google. */
+    @Column(name = "google_id", unique = true)
+    private String googleId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role")

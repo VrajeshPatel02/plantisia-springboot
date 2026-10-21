@@ -5,6 +5,7 @@ import com.nikyfarm.dto.ProductResponseDto;
 import com.nikyfarm.entity.Category;
 import com.nikyfarm.entity.Product;
 import com.nikyfarm.entity.ProductImage;
+import com.nikyfarm.entity.ProductVariant;
 import com.nikyfarm.entity.Reviews;
 import com.nikyfarm.exception.BusinessRuleViolationException;
 import com.nikyfarm.exception.DuplicateResourceException;
@@ -20,6 +21,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,6 +45,99 @@ public class ProductServiceImpl implements ProductService {
     private final ProductAttributeValueRepository productAttributeValueRepository;
     private final ReviewsRepository reviewsRepository;
     private final CloudinaryService cloudinaryService;
+
+    // ============================================================
+    // EXPORT PRODUCT AND VARIANT PRICES TO EXCEL
+    // ============================================================
+
+    /**
+     * Exports product names and prices together with their variant names and prices.
+     * One row is written per variant; products without variants still get a row.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportProductsToExcel() {
+        List<Product> products = productRepository.findAll(
+                org.springframework.data.domain.Sort.by("name").ascending());
+
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Products");
+            String[] headers = {
+                    "Product Name",
+                    "Product Price",
+                    "Product Discounted Price",
+                    "Variant Name",
+                    "Variant Price",
+                    "Variant Discounted Price"
+            };
+
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFont(headerFont);
+            headerStyle.setWrapText(true);
+
+            Row header = sheet.createRow(0);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = header.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            int rowIndex = 1;
+            for (Product product : products) {
+                var variants = product.getProductVariants();
+                if (variants == null || variants.isEmpty()) {
+                    Row row = sheet.createRow(rowIndex++);
+                    writeProductExportRow(row, product, null);
+                } else {
+                    for (ProductVariant variant : variants) {
+                        Row row = sheet.createRow(rowIndex++);
+                        writeProductExportRow(row, product, variant);
+                    }
+                }
+            }
+
+            sheet.createFreezePane(0, 1);
+            sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(
+                    0, Math.max(0, rowIndex - 1), 0, headers.length - 1));
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+                if (sheet.getColumnWidth(i) > 14000) {
+                    sheet.setColumnWidth(i, 14000);
+                }
+            }
+
+            workbook.write(output);
+            return output.toByteArray();
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to export product data to Excel", exception);
+        }
+    }
+
+    private void writeProductExportRow(Row row, Product product, ProductVariant variant) {
+        setCell(row, 0, product.getName());
+        setCell(row, 1, product.getBasePrice());
+        setCell(row, 2, product.getDiscountedPrice());
+        setCell(row, 3, variant == null ? null : variant.getVariantLabel());
+        setCell(row, 4, variant == null ? null : variant.getPrice());
+        setCell(row, 5, variant == null ? null : variant.getDiscountedPrice());
+    }
+
+    private void setCell(Row row, int columnIndex, Object value) {
+        if (value == null) {
+            return;
+        }
+        Cell cell = row.createCell(columnIndex);
+        if (value instanceof Number number) {
+            cell.setCellValue(number.doubleValue());
+        } else if (value instanceof Boolean bool) {
+            cell.setCellValue(bool);
+        } else {
+            cell.setCellValue(value.toString());
+        }
+    }
 
     // ============================================================
     // CREATE PRODUCT

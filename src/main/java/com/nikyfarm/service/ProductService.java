@@ -17,5 +17,7 @@ public interface ProductService {
 
     Page<ProductResponseDto> getProducts(Long categoryId, String search, Pageable pageable);
 
+    byte[] exportProductsToExcel();
+
     void deleteProduct(Long id);
 }

@@ -3,18 +3,30 @@
 <body>
 <nav th:fragment="nav" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
     <div class="container-fluid">
-        <a class="navbar-brand" href="/admin">Nikyfarm Admin</a>
-        <div class="navbar-nav">
-            <a class="nav-link" href="/admin/categories">Categories</a>
-            <a class="nav-link" href="/admin/products">Products</a>
-            <a class="nav-link" href="/admin/attributes">Attributes</a>
-            <a class="nav-link" href="/admin/reviews">Reviews</a>
-            <a class="nav-link" href="/admin/wishlist">Wishlist</a>
-            <a class="nav-link" href="/admin/cart-items">Cart</a>
-            <a class="nav-link" href="/admin/users">Users</a>
-            <a class="nav-link" href="/admin/addresses">Addresses</a>
-            <a class="nav-link" href="/admin/orders">Orders</a>
-            <a class="nav-link" href="/admin/coupons">Coupons</a>
+        <a class="navbar-brand" th:href="@{/admin}">Nikyfarm Admin</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar"
+                aria-controls="adminNavbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="adminNavbar">
+            <div class="navbar-nav me-auto">
+                <a class="nav-link" th:href="@{/admin/categories}">Categories</a>
+                <a class="nav-link" th:href="@{/admin/products}">Products</a>
+                <a class="nav-link" th:href="@{/admin/attributes}">Attributes</a>
+                <a class="nav-link" th:href="@{/admin/reviews}">Reviews</a>
+                <a class="nav-link" th:href="@{/admin/wishlist}">Wishlist</a>
+                <a class="nav-link" th:href="@{/admin/cart-items}">Cart</a>
+                <a class="nav-link" th:href="@{/admin/users}">Users</a>
+                <a class="nav-link" th:href="@{/admin/addresses}">Addresses</a>
+                <a class="nav-link" th:href="@{/admin/orders}">Orders</a>
+                <a class="nav-link" th:href="@{/admin/coupons}">Coupons</a>
+            </div>
+            <form th:action="@{/admin/logout}" method="post" class="d-flex">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button class="btn btn-outline-light btn-sm" type="submit">
+                    <i class="bi bi-box-arrow-right me-1"></i>Sign out
+                </button>
+            </form>
         </div>
     </div>
 </nav>

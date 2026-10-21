@@ -1,32 +1,318 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{admin/fragments/head :: head('Dashboard')}"></head>
-<body>
+<body class="admin-dashboard">
 <nav th:replace="~{admin/fragments/nav :: nav}"></nav>
-<div class="container">
+
+<main class="container-fluid dashboard-shell px-3 px-lg-4 py-4">
     <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
-    <h1 class="mb-4">Dashboard</h1>
-    <div class="row g-4">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title text-muted">Categories</h5>
-                    <p class="display-6" th:text="${categoryCount}">0</p>
-                    <a href="/admin/categories" class="btn btn-primary btn-sm">Manage Categories</a>
-                </div>
-            </div>
+
+    <header class="dashboard-heading d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+        <div>
+            <p class="dashboard-eyebrow mb-1">NIKY FARM &amp; NURSERY · ADMINISTRATION</p>
+            <h1 class="mb-1">Dashboard</h1>
+            <p class="text-muted mb-0">A quick view of your store, orders, customers and catalog health.</p>
         </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title text-muted">Products</h5>
-                    <p class="display-6" th:text="${productCount}">0</p>
-                    <a href="/admin/products" class="btn btn-primary btn-sm">Manage Products</a>
-                </div>
-            </div>
+        <div class="dashboard-date">
+            <i class="bi bi-speedometer2 me-2"></i>Store overview
         </div>
-    </div>
-</div>
+    </header>
+
+    <section class="row g-3 mb-4" aria-label="Store summary">
+        <div class="col-6 col-xl-2">
+            <a class="metric-card metric-green" href="/admin/orders">
+                <span class="metric-icon"><i class="bi bi-receipt"></i></span>
+                <span class="metric-label">Orders</span>
+                <strong class="metric-value" th:text="${orderCount}">0</strong>
+                <span class="metric-foot">View order queue <i class="bi bi-arrow-up-right"></i></span>
+            </a>
+        </div>
+        <div class="col-6 col-xl-2">
+            <a class="metric-card metric-clay" href="/admin/products">
+                <span class="metric-icon"><i class="bi bi-flower1"></i></span>
+                <span class="metric-label">Products</span>
+                <strong class="metric-value" th:text="${productCount}">0</strong>
+                <span class="metric-foot">Manage catalog <i class="bi bi-arrow-up-right"></i></span>
+            </a>
+        </div>
+        <div class="col-6 col-xl-2">
+            <a class="metric-card metric-sage" href="/admin/users">
+                <span class="metric-icon"><i class="bi bi-people"></i></span>
+                <span class="metric-label">Customers / users</span>
+                <strong class="metric-value" th:text="${userCount}">0</strong>
+                <span class="metric-foot"><span th:text="${activeUserCount}">0</span> active accounts</span>
+            </a>
+        </div>
+        <div class="col-6 col-xl-2">
+            <a class="metric-card metric-sand" href="/admin/categories">
+                <span class="metric-icon"><i class="bi bi-grid"></i></span>
+                <span class="metric-label">Categories</span>
+                <strong class="metric-value" th:text="${categoryCount}">0</strong>
+                <span class="metric-foot">Organize products <i class="bi bi-arrow-up-right"></i></span>
+            </a>
+        </div>
+        <div class="col-6 col-xl-2">
+            <a class="metric-card metric-lilac" href="/admin/reviews">
+                <span class="metric-icon"><i class="bi bi-star"></i></span>
+                <span class="metric-label">Reviews</span>
+                <strong class="metric-value" th:text="${reviewCount}">0</strong>
+                <span class="metric-foot">
+                    <span th:text="${#numbers.formatDecimal(averageRating, 1, 1)}">0.0</span> / 5 average rating
+                </span>
+            </a>
+        </div>
+        <div class="col-6 col-xl-2">
+            <a class="metric-card metric-blue" href="/admin/coupons">
+                <span class="metric-icon"><i class="bi bi-ticket-perforated"></i></span>
+                <span class="metric-label">Coupons</span>
+                <strong class="metric-value" th:text="${couponCount}">0</strong>
+                <span class="metric-foot">Manage promotions <i class="bi bi-arrow-up-right"></i></span>
+            </a>
+        </div>
+    </section>
+
+    <section class="row g-3 mb-4">
+        <div class="col-12 col-xl-7">
+            <article class="dashboard-panel h-100">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Order status</h2>
+                        <p class="text-muted mb-0">How orders are distributed across their current statuses.</p>
+                    </div>
+                    <a href="/admin/orders" class="panel-link">All orders <i class="bi bi-arrow-right"></i></a>
+                </div>
+                <div class="chart-wrap order-chart-wrap">
+                    <canvas id="orderStatusChart" role="img" aria-label="Orders grouped by status"></canvas>
+                    <p class="chart-empty text-muted" id="orderChartEmpty" hidden>No orders have been recorded yet.</p>
+                </div>
+            </article>
+        </div>
+        <div class="col-12 col-xl-5">
+            <article class="dashboard-panel h-100">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Customer feedback</h2>
+                        <p class="text-muted mb-0">Review count by star rating.</p>
+                    </div>
+                    <a href="/admin/reviews" class="panel-link">Reviews <i class="bi bi-arrow-right"></i></a>
+                </div>
+                <div class="rating-summary">
+                    <div class="rating-score">
+                        <strong th:text="${#numbers.formatDecimal(averageRating, 1, 1)}">0.0</strong>
+                        <span class="rating-stars" aria-label="Average rating out of five">★★★★★</span>
+                        <small class="text-muted"><span th:text="${ratedReviewCount}">0</span> rated reviews</small>
+                    </div>
+                    <div class="chart-wrap rating-chart-wrap">
+                        <canvas id="reviewRatingChart" role="img" aria-label="Reviews by star rating"></canvas>
+                        <p class="chart-empty text-muted" id="reviewChartEmpty" hidden>No ratings recorded yet.</p>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="row g-3">
+        <div class="col-12 col-xl-8">
+            <article class="dashboard-panel h-100">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Store operations</h2>
+                        <p class="text-muted mb-0">Useful counts for customer support and daily maintenance.</p>
+                    </div>
+                </div>
+                <div class="operations-grid">
+                    <a class="operation-row" href="/admin/addresses">
+                        <span class="operation-icon"><i class="bi bi-geo-alt"></i></span>
+                        <span class="operation-copy"><strong>Saved addresses</strong><small>Customer delivery details</small></span>
+                        <strong class="operation-count" th:text="${addressCount}">0</strong>
+                        <i class="bi bi-chevron-right operation-chevron"></i>
+                    </a>
+                    <a class="operation-row" href="/admin/cart-items">
+                        <span class="operation-icon"><i class="bi bi-cart3"></i></span>
+                        <span class="operation-copy"><strong>Cart items</strong><small>Items currently in customer carts</small></span>
+                        <strong class="operation-count" th:text="${cartItemCount}">0</strong>
+                        <i class="bi bi-chevron-right operation-chevron"></i>
+                    </a>
+                    <a class="operation-row" href="/admin/wishlist">
+                        <span class="operation-icon"><i class="bi bi-heart"></i></span>
+                        <span class="operation-copy"><strong>Wishlist items</strong><small>Products saved by customers</small></span>
+                        <strong class="operation-count" th:text="${wishlistItemCount}">0</strong>
+                        <i class="bi bi-chevron-right operation-chevron"></i>
+                    </a>
+                    <a class="operation-row" href="/admin/attributes">
+                        <span class="operation-icon"><i class="bi bi-list-check"></i></span>
+                        <span class="operation-copy"><strong>Product attributes</strong><small>Plant care and catalog specifications</small></span>
+                        <span class="operation-action">Manage</span>
+                        <i class="bi bi-chevron-right operation-chevron"></i>
+                    </a>
+                </div>
+            </article>
+        </div>
+        <div class="col-12 col-xl-4">
+            <article class="dashboard-panel h-100">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Quick actions</h2>
+                        <p class="text-muted mb-0">Jump straight into common tasks.</p>
+                    </div>
+                </div>
+                <div class="quick-actions">
+                    <a href="/admin/products/new" class="quick-action-primary">
+                        <span><i class="bi bi-plus-circle me-2"></i>Add a product</span>
+                        <i class="bi bi-arrow-up-right"></i>
+                    </a>
+                    <a href="/admin/orders" class="quick-action">
+                        <span><i class="bi bi-box-seam me-2"></i>Review orders</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                    <a href="/admin/reviews" class="quick-action">
+                        <span><i class="bi bi-chat-square-text me-2"></i>Moderate reviews</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                    <a href="/admin/coupons" class="quick-action">
+                        <span><i class="bi bi-ticket-perforated me-2"></i>Manage coupons</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                    <a href="/admin/users" class="quick-action">
+                        <span><i class="bi bi-person-gear me-2"></i>Manage users</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <p class="dashboard-footnote mt-4 mb-0">
+        <i class="bi bi-info-circle me-1"></i>
+        Counts reflect the current records returned by the existing admin services. Revenue and date-based sales trends are not shown because the supplied controllers do not expose enough verified reporting data for those metrics.
+    </p>
+</main>
+
+<style>
+    :root {
+        --dash-ink: #29372c;
+        --dash-moss: #526b4f;
+        --dash-border: #dfe5da;
+        --dash-muted: #72796f;
+        --dash-paper: #fbfaf6;
+        --dash-clay: #c97d4c;
+    }
+    body.admin-dashboard { background: #f5f4ee; color: var(--dash-ink); }
+    .dashboard-shell { max-width: 1600px; }
+    .dashboard-heading h1 { color: var(--dash-ink); font-size: clamp(1.8rem, 3vw, 2.45rem); font-weight: 750; letter-spacing: -.04em; }
+    .dashboard-eyebrow { color: var(--dash-moss); font-size: .72rem; font-weight: 800; letter-spacing: .13em; }
+    .dashboard-date { border: 1px solid var(--dash-border); border-radius: 999px; padding: .55rem .9rem; color: var(--dash-moss); background: #fff; font-size: .88rem; font-weight: 650; }
+    .metric-card { display:flex; flex-direction:column; min-height:168px; padding:1rem; border:1px solid var(--dash-border); border-radius:15px; text-decoration:none; color:var(--dash-ink); background:#fff; box-shadow:0 3px 12px #29372c08; transition:transform .18s ease, box-shadow .18s ease; }
+    .metric-card:hover { color:var(--dash-ink); transform:translateY(-2px); box-shadow:0 9px 24px #29372c12; }
+    .metric-icon { display:grid; place-items:center; width:36px; height:36px; border-radius:11px; margin-bottom:.8rem; font-size:1.1rem; }
+    .metric-label { color:var(--dash-muted); font-size:.8rem; font-weight:650; }
+    .metric-value { font-size:clamp(1.7rem, 2.5vw, 2.15rem); letter-spacing:-.04em; line-height:1.2; margin:.15rem 0 .45rem; }
+    .metric-foot { color:var(--dash-muted); font-size:.73rem; margin-top:auto; }
+    .metric-green .metric-icon { background:#e6efe2; color:#496a43; } .metric-clay .metric-icon { background:#f7e8dc; color:#b36c3e; }
+    .metric-sage .metric-icon { background:#e5ece7; color:#426a5a; } .metric-sand .metric-icon { background:#f4efda; color:#89783b; }
+    .metric-lilac .metric-icon { background:#eee8f5; color:#795c91; } .metric-blue .metric-icon { background:#e5edf7; color:#4f7099; }
+    .dashboard-panel { background:#fff; border:1px solid var(--dash-border); border-radius:16px; padding:1.2rem; box-shadow:0 3px 12px #29372c08; }
+    .panel-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:1rem; }
+    .panel-heading h2 { font-size:1.08rem; font-weight:750; margin:0 0 .3rem; letter-spacing:-.02em; }
+    .panel-heading p { font-size:.82rem; }
+    .panel-link { color:var(--dash-moss); text-decoration:none; font-size:.8rem; font-weight:750; white-space:nowrap; }
+    .panel-link:hover { text-decoration:underline; }
+    .chart-wrap { position:relative; width:100%; }
+    .order-chart-wrap { height:285px; }
+    .rating-chart-wrap { height:205px; }
+    .chart-empty { text-align:center; padding:3rem 1rem; font-size:.9rem; }
+    .rating-summary { display:grid; grid-template-columns:115px minmax(0,1fr); gap:.5rem; align-items:center; }
+    .rating-score { display:flex; flex-direction:column; gap:.2rem; }
+    .rating-score strong { font-size:2.7rem; line-height:1; letter-spacing:-.06em; }
+    .rating-stars { color:#d5a044; letter-spacing:.08em; font-size:.9rem; }
+    .rating-score small { font-size:.7rem; }
+    .operations-grid { display:grid; }
+    .operation-row { display:flex; align-items:center; gap:.85rem; padding:.9rem .15rem; color:var(--dash-ink); text-decoration:none; border-bottom:1px solid #edf0e9; }
+    .operation-row:last-child { border-bottom:0; }
+    .operation-row:hover .operation-copy strong { color:var(--dash-moss); }
+    .operation-icon { display:grid; place-items:center; width:38px; height:38px; border-radius:11px; background:#eef1e9; color:var(--dash-moss); font-size:1.05rem; flex-shrink:0; }
+    .operation-copy { display:flex; flex-direction:column; min-width:0; }
+    .operation-copy strong { font-size:.87rem; }
+    .operation-copy small { color:var(--dash-muted); font-size:.75rem; margin-top:.12rem; }
+    .operation-count { margin-left:auto; font-size:1.1rem; font-variant-numeric:tabular-nums; }
+    .operation-action { margin-left:auto; color:var(--dash-moss); font-size:.78rem; font-weight:750; }
+    .operation-chevron { color:#9aa398; font-size:.75rem; }
+    .quick-actions { display:grid; gap:.55rem; }
+    .quick-action, .quick-action-primary { display:flex; align-items:center; justify-content:space-between; gap:1rem; border-radius:10px; padding:.85rem .9rem; text-decoration:none; font-size:.84rem; font-weight:650; }
+    .quick-action { border:1px solid #e7ebe2; color:var(--dash-ink); background:#fff; }
+    .quick-action:hover { border-color:#a8b8a0; color:var(--dash-moss); background:#fafbf8; }
+    .quick-action > i { color:#8d978a; }
+    .quick-action-primary { background:var(--dash-moss); color:#fff; }
+    .quick-action-primary:hover { background:#40573d; color:#fff; }
+    .dashboard-footnote { color:var(--dash-muted); font-size:.75rem; }
+    @media (max-width: 575.98px) { .dashboard-panel { padding:1rem; } .rating-summary { grid-template-columns:1fr; } .rating-score { flex-direction:row; align-items:center; flex-wrap:wrap; gap:.55rem; } .rating-score strong { font-size:2rem; } .rating-chart-wrap { height:170px; } .order-chart-wrap { height:250px; } }
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script th:inline="javascript">
+    const orderStatusLabels = [[${orderStatusLabels}]];
+    const orderStatusCounts = [[${orderStatusCounts}]];
+    const reviewRatingCounts = [[${reviewRatingCounts}]];
+    const chartFont = { family: "system-ui, -apple-system, Segoe UI, sans-serif" };
+
+    const orderCanvas = document.getElementById("orderStatusChart");
+    if (orderStatusCounts.reduce((sum, count) => sum + count, 0) === 0) {
+        orderCanvas.hidden = true;
+        document.getElementById("orderChartEmpty").hidden = false;
+    } else {
+        new Chart(orderCanvas, {
+            type: "bar",
+            data: {
+                labels: orderStatusLabels.map(label => label.replaceAll("_", " ")),
+                datasets: [{
+                    label: "Orders",
+                    data: orderStatusCounts,
+                    backgroundColor: ["#607b58", "#c97d4c", "#9cac8d", "#d7b66d", "#8d7ba7", "#7195a1", "#bd8d87"],
+                    borderRadius: 7,
+                    borderSkipped: false,
+                    maxBarThickness: 42
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => `${context.parsed.y} order(s)` } } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: "#72796f", font: { ...chartFont, size: 10 } }, border: { display: false } },
+                    y: { beginAtZero: true, ticks: { precision: 0, color: "#72796f" }, grid: { color: "#edf0e9" }, border: { display: false } }
+                }
+            }
+        });
+    }
+
+    const reviewCanvas = document.getElementById("reviewRatingChart");
+    if (reviewRatingCounts.reduce((sum, count) => sum + count, 0) === 0) {
+        reviewCanvas.hidden = true;
+        document.getElementById("reviewChartEmpty").hidden = false;
+    } else {
+        new Chart(reviewCanvas, {
+            type: "bar",
+            data: {
+                labels: ["1 star", "2 stars", "3 stars", "4 stars", "5 stars"],
+                datasets: [{
+                    data: reviewRatingCounts,
+                    backgroundColor: ["#c97d4c", "#d9a36e", "#d7b66d", "#9cac8d", "#607b58"],
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    maxBarThickness: 28
+                }]
+            },
+            options: {
+                indexAxis: "y",
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => `${context.parsed.x} review(s)` } } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { precision: 0, color: "#72796f" }, grid: { color: "#edf0e9" }, border: { display: false } },
+                    y: { grid: { display: false }, ticks: { color: "#72796f", font: { ...chartFont, size: 11 } }, border: { display: false } }
+                }
+            }
+        });
+    }
+</script>
 </body>
 </html>

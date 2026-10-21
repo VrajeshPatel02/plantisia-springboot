@@ -1,6 +1,7 @@
 package com.nikyfarm.controller;
 
 import com.nikyfarm.dto.AuthResponseDto;
+import com.nikyfarm.dto.GoogleLoginRequestDto;
 import com.nikyfarm.dto.LoginRequestDto;
 import com.nikyfarm.dto.RegisterRequestDto;
 import com.nikyfarm.service.AuthService;
@@ -28,5 +29,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDto> login(@RequestBody @Valid LoginRequestDto request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponseDto> googleLogin(@RequestBody @Valid GoogleLoginRequestDto request) {
+        return ResponseEntity.ok(authService.googleLogin(request));
     }
 }

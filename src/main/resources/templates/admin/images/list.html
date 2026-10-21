@@ -5,7 +5,7 @@
 <nav th:replace="~{admin/fragments/nav :: nav}"></nav>
 <div class="container">
     <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
-    <p><a href="/admin/products">&larr; Back to Products</a></p>
+    <p><a th:href="@{'/admin/products/' + ${product.id} + '/edit'}">&larr; Back to Product Form</a></p>
     <h1 class="mb-4">General Images for <span th:text="${product.slug}"></span></h1>
     <p class="text-muted">
         These are product-level images, not tied to a specific variant (e.g. a lifestyle/hero shot).

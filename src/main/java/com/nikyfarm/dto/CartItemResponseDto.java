@@ -20,6 +20,8 @@ public class CartItemResponseDto {
     private Long productId;
     private String productName;
     private String primaryImageUrl;
+    /** Original variant price before any discount. */
+    private BigDecimal originalPrice;
     private BigDecimal unitPrice;
     private Integer quantity;
     private BigDecimal lineTotal;

@@ -5,7 +5,7 @@
 <nav th:replace="~{admin/fragments/nav :: nav}"></nav>
 <div class="container">
     <div th:replace="~{admin/fragments/alerts :: alerts}"></div>
-    <p><a href="/admin/products">&larr; Back to Products</a></p>
+    <p><a th:href="@{'/admin/products/' + ${product.id} + '/edit'}">&larr; Back to Product Form</a></p>
     <div th:if="${#lists.isEmpty(variants)}" class="alert alert-warning">
         This product has no variants yet. Every product needs at least one &mdash; even a single
         fixed size/pack counts as its one variant.
