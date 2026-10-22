@@ -42,7 +42,7 @@ public class Category {
     @Column(name = "image_public_id")
     private String imagePublicId;
 
-    @Column(name = "description")
+    @Column(name = "description", length = 500)
     private String description;
 
     @Column(name = "sort_order")
