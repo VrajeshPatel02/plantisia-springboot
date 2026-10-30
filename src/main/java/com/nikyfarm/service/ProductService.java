@@ -4,6 +4,7 @@ import com.nikyfarm.dto.ProductRequestDto;
 import com.nikyfarm.dto.ProductResponseDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.List;
 
 public interface ProductService {
 
@@ -17,7 +18,7 @@ public interface ProductService {
 
     Page<ProductResponseDto> getProducts(Long categoryId, String search, Pageable pageable);
 
-    byte[] exportProductsToExcel();
+    byte[] exportProducts(List<String> fields, String format);
 
     void deleteProduct(Long id);
 }

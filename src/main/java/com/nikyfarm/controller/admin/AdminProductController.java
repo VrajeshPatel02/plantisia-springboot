@@ -58,15 +58,22 @@ public class AdminProductController {
     }
 
 
-    @GetMapping("/export")
-    public ResponseEntity<byte[]> exportProducts() {
-        byte[] workbook = productService.exportProductsToExcel();
+    @PostMapping("/export")
+    public ResponseEntity<byte[]> exportProducts(
+            @RequestParam("fields") List<String> fields,
+            @RequestParam(defaultValue = "xlsx") String format,
+            @RequestParam(defaultValue = "nikyfarm-products") String filename) {
+        byte[] file = productService.exportProducts(fields, format);
+        String safeName = (filename == null ? "" : filename).trim()
+                .replaceAll("[^a-zA-Z0-9._-]+", "-").replaceAll("^-+|-+$", "");
+        if (safeName.isBlank()) safeName = "nikyfarm-products";
+        String extension = "csv".equalsIgnoreCase(format) ? "csv" : "xlsx";
+        MediaType type = "csv".equalsIgnoreCase(format) ?
+                new MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8) :
+                MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=nikyfarm-products.xlsx")
-                .contentType(MediaType.parseMediaType(
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .contentLength(workbook.length)
-                .body(workbook);
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + safeName + "." + extension + "\"")
+                .contentType(type).contentLength(file.length).body(file);
     }
 
     @GetMapping("/new")

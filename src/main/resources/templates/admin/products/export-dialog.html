@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="exportDialog" class="modal fade" id="productExportModal" tabindex="-1" aria-labelledby="productExportModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable export-modal-dialog">
+    <div class="modal-content export-modal-content">
+      <form method="post" th:action="@{/admin/products/export}" id="productExportForm">
+        <div class="modal-header">
+          <div><h5 class="modal-title" id="productExportModalLabel">Customize product export</h5><p class="text-muted small mb-0">Choose the columns and file format for your download.</p></div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body export-modal-body">
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="selectAllExportFields">Select all</button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="clearExportFields">Clear all</button>
+            <button class="btn btn-sm btn-outline-success" type="button" id="productOnlyFields">Product fields</button>
+            <button class="btn btn-sm btn-outline-success" type="button" id="variantOnlyFields">Variant fields</button>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6"><div class="border rounded p-3 h-100"><h6>Product fields</h6>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="productId" id="ef-productId" checked><label class="form-check-label" for="ef-productId">Product ID</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="productName" id="ef-productName" checked><label class="form-check-label" for="ef-productName">Product name</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="slug" id="ef-slug"><label class="form-check-label" for="ef-slug">Slug</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="category" id="ef-category" checked><label class="form-check-label" for="ef-category">Category</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="shortDescription" id="ef-shortDescription"><label class="form-check-label" for="ef-shortDescription">Short description</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="description" id="ef-description"><label class="form-check-label" for="ef-description">Description</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="basePrice" id="ef-basePrice" checked><label class="form-check-label" for="ef-basePrice">Base price</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="discountedPrice" id="ef-discountedPrice" checked><label class="form-check-label" for="ef-discountedPrice">Product discounted price</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="isActive" id="ef-isActive"><label class="form-check-label" for="ef-isActive">Active status</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="avgRating" id="ef-avgRating"><label class="form-check-label" for="ef-avgRating">Average rating</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="reviewCount" id="ef-reviewCount"><label class="form-check-label" for="ef-reviewCount">Review count</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="createdAt" id="ef-createdAt"><label class="form-check-label" for="ef-createdAt">Created at</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="updatedAt" id="ef-updatedAt"><label class="form-check-label" for="ef-updatedAt">Updated at</label></div>
+            </div></div>
+            <div class="col-md-6"><div class="border rounded p-3 h-100"><h6>Variant fields</h6>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="variantId" id="ef-variantId"><label class="form-check-label" for="ef-variantId">Variant ID</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="variantLabel" id="ef-variantLabel" checked><label class="form-check-label" for="ef-variantLabel">Variant label</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="sku" id="ef-sku" checked><label class="form-check-label" for="ef-sku">SKU</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="size" id="ef-size"><label class="form-check-label" for="ef-size">Size</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="colour" id="ef-colour"><label class="form-check-label" for="ef-colour">Colour</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="variantPrice" id="ef-variantPrice" checked><label class="form-check-label" for="ef-variantPrice">Variant price</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="variantDiscountedPrice" id="ef-variantDiscountedPrice"><label class="form-check-label" for="ef-variantDiscountedPrice">Variant discounted price</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="stockQuantity" id="ef-stockQuantity" checked><label class="form-check-label" for="ef-stockQuantity">Stock quantity</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="isDefault" id="ef-isDefault"><label class="form-check-label" for="ef-isDefault">Default variant</label></div>
+              <div class="form-check"><input class="form-check-input export-field" type="checkbox" name="fields" value="variantIsActive" id="ef-variantIsActive"><label class="form-check-label" for="ef-variantIsActive">Variant active status</label></div>
+            </div></div>
+          </div>
+          <hr>
+          <div class="row g-3"><div class="col-md-5"><label class="form-label" for="exportFormat">File format</label><select class="form-select" name="format" id="exportFormat"><option value="xlsx" selected>Excel workbook (.xlsx)</option><option value="csv">CSV (.csv)</option></select></div>
+            <div class="col-md-7"><label class="form-label" for="exportFilename">File name</label><input class="form-control" name="filename" id="exportFilename" value="nikyfarm-products" maxlength="80" required><div class="form-text">The extension is added automatically.</div></div></div>
+          <div class="small text-muted mt-3"><span id="selectedExportCount">6</span> field(s) selected. Products with variants produce one row per variant; products without variants still produce one row.</div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-success"><i class="bi bi-download me-1"></i> Download file</button></div>
+      </form>
+    </div>
+  </div>
+  <style>
+    /* Keep the export dialog within the viewport and scroll its field list. */
+    #productExportModal .export-modal-dialog {
+      max-height: calc(100dvh - 2rem);
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+    }
+    #productExportModal .export-modal-content {
+      max-height: calc(100dvh - 2rem);
+      display: flex;
+      overflow: hidden;
+    }
+    #productExportModal .export-modal-body {
+      min-height: 0;
+      overflow-y: auto !important;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    @supports not (height: 100dvh) {
+      #productExportModal .export-modal-dialog,
+      #productExportModal .export-modal-content { max-height: calc(100vh - 2rem); }
+    }
+  </style>
+  <script>
+    (function () {
+      const modal = document.getElementById('productExportModal');
+      if (!modal) return;
+      const boxes = () => Array.from(modal.querySelectorAll('.export-field'));
+      const count = modal.querySelector('#selectedExportCount');
+      const updateCount = () => { const selected = boxes().filter(x => x.checked).length; count.textContent = selected; modal.querySelector('button[type="submit"]').disabled = selected === 0; };
+      modal.addEventListener('change', updateCount);
+      modal.querySelector('#selectAllExportFields').addEventListener('click', () => { boxes().forEach(x => x.checked = true); updateCount(); });
+      modal.querySelector('#clearExportFields').addEventListener('click', () => { boxes().forEach(x => x.checked = false); updateCount(); });
+      modal.querySelector('#productOnlyFields').addEventListener('click', () => { boxes().forEach(x => x.checked = ['productId','productName','slug','category','shortDescription','description','basePrice','discountedPrice','isActive','avgRating','reviewCount','createdAt','updatedAt'].includes(x.value)); updateCount(); });
+      modal.querySelector('#variantOnlyFields').addEventListener('click', () => { boxes().forEach(x => x.checked = ['variantId','variantLabel','sku','size','colour','variantPrice','variantDiscountedPrice','stockQuantity','isDefault','variantIsActive'].includes(x.value)); updateCount(); });
+      modal.querySelector('#productExportForm').addEventListener('submit', event => { if (!boxes().some(x => x.checked)) { event.preventDefault(); alert('Select at least one field to export.'); } });
+      updateCount();
+    })();
+  </script>
+</div>
+</body>
+</html>

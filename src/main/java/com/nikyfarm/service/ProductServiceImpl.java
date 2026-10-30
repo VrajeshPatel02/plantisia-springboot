@@ -47,96 +47,130 @@ public class ProductServiceImpl implements ProductService {
     private final CloudinaryService cloudinaryService;
 
     // ============================================================
-    // EXPORT PRODUCT AND VARIANT PRICES TO EXCEL
+    // CUSTOM PRODUCT EXPORT (XLSX OR CSV)
     // ============================================================
 
-    /**
-     * Exports product names and prices together with their variant names and prices.
-     * One row is written per variant; products without variants still get a row.
-     */
+    private static final Map<String, String> EXPORT_FIELDS = Map.ofEntries(
+            Map.entry("productId", "Product ID"),
+            Map.entry("productName", "Product Name"),
+            Map.entry("slug", "Slug"),
+            Map.entry("category", "Category"),
+            Map.entry("shortDescription", "Short Description"),
+            Map.entry("description", "Description"),
+            Map.entry("basePrice", "Base Price"),
+            Map.entry("discountedPrice", "Product Discounted Price"),
+            Map.entry("isActive", "Product Active"),
+            Map.entry("avgRating", "Average Rating"),
+            Map.entry("reviewCount", "Review Count"),
+            Map.entry("createdAt", "Created At"),
+            Map.entry("updatedAt", "Updated At"),
+            Map.entry("variantId", "Variant ID"),
+            Map.entry("variantLabel", "Variant Label"),
+            Map.entry("sku", "SKU"),
+            Map.entry("size", "Size"),
+            Map.entry("colour", "Colour"),
+            Map.entry("variantPrice", "Variant Price"),
+            Map.entry("variantDiscountedPrice", "Variant Discounted Price"),
+            Map.entry("stockQuantity", "Stock Quantity"),
+            Map.entry("isDefault", "Default Variant"),
+            Map.entry("variantIsActive", "Variant Active")
+    );
+
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportProductsToExcel() {
+    public byte[] exportProducts(List<String> requestedFields, String format) {
+        if (requestedFields == null || requestedFields.isEmpty()) {
+            throw new IllegalArgumentException("Select at least one field to export.");
+        }
+        List<String> fields = requestedFields.stream().distinct()
+                .filter(EXPORT_FIELDS::containsKey).toList();
+        if (fields.isEmpty()) {
+            throw new IllegalArgumentException("No valid export fields were selected.");
+        }
         List<Product> products = productRepository.findAll(
                 org.springframework.data.domain.Sort.by("name").ascending());
+        boolean csv = "csv".equalsIgnoreCase(format);
+        if (!csv && !"xlsx".equalsIgnoreCase(format)) {
+            throw new IllegalArgumentException("Unsupported export format.");
+        }
+        return csv ? writeProductsCsv(products, fields) : writeProductsXlsx(products, fields);
+    }
 
-        try (Workbook workbook = new XSSFWorkbook();
-             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+    private byte[] writeProductsXlsx(List<Product> products, List<String> fields) {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Products");
-            String[] headers = {
-                    "Product Name",
-                    "Product Price",
-                    "Product Discounted Price",
-                    "Variant Name",
-                    "Variant Price",
-                    "Variant Discounted Price"
-            };
-
-            Font headerFont = workbook.createFont();
-            headerFont.setBold(true);
-            CellStyle headerStyle = workbook.createCellStyle();
-            headerStyle.setFont(headerFont);
-            headerStyle.setWrapText(true);
-
+            Font font = workbook.createFont(); font.setBold(true);
+            CellStyle style = workbook.createCellStyle(); style.setFont(font); style.setWrapText(true);
             Row header = sheet.createRow(0);
-            for (int i = 0; i < headers.length; i++) {
-                Cell cell = header.createCell(i);
-                cell.setCellValue(headers[i]);
-                cell.setCellStyle(headerStyle);
+            for (int c = 0; c < fields.size(); c++) {
+                Cell cell = header.createCell(c); cell.setCellValue(EXPORT_FIELDS.get(fields.get(c))); cell.setCellStyle(style);
             }
-
             int rowIndex = 1;
             for (Product product : products) {
                 var variants = product.getProductVariants();
                 if (variants == null || variants.isEmpty()) {
-                    Row row = sheet.createRow(rowIndex++);
-                    writeProductExportRow(row, product, null);
+                    writeExportRow(sheet.createRow(rowIndex++), product, null, fields);
                 } else {
-                    for (ProductVariant variant : variants) {
-                        Row row = sheet.createRow(rowIndex++);
-                        writeProductExportRow(row, product, variant);
-                    }
+                    for (ProductVariant variant : variants) writeExportRow(sheet.createRow(rowIndex++), product, variant, fields);
                 }
             }
-
             sheet.createFreezePane(0, 1);
-            sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(
-                    0, Math.max(0, rowIndex - 1), 0, headers.length - 1));
-            for (int i = 0; i < headers.length; i++) {
-                sheet.autoSizeColumn(i);
-                if (sheet.getColumnWidth(i) > 14000) {
-                    sheet.setColumnWidth(i, 14000);
-                }
-            }
-
-            workbook.write(output);
-            return output.toByteArray();
-        } catch (IOException exception) {
-            throw new IllegalStateException("Unable to export product data to Excel", exception);
-        }
+            sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, Math.max(0, rowIndex - 1), 0, fields.size() - 1));
+            for (int c = 0; c < fields.size(); c++) { sheet.autoSizeColumn(c); if (sheet.getColumnWidth(c) > 14000) sheet.setColumnWidth(c, 14000); }
+            workbook.write(output); return output.toByteArray();
+        } catch (IOException exception) { throw new IllegalStateException("Unable to export product data to Excel", exception); }
     }
 
-    private void writeProductExportRow(Row row, Product product, ProductVariant variant) {
-        setCell(row, 0, product.getName());
-        setCell(row, 1, product.getBasePrice());
-        setCell(row, 2, product.getDiscountedPrice());
-        setCell(row, 3, variant == null ? null : variant.getVariantLabel());
-        setCell(row, 4, variant == null ? null : variant.getPrice());
-        setCell(row, 5, variant == null ? null : variant.getDiscountedPrice());
+    private void writeExportRow(Row row, Product p, ProductVariant v, List<String> fields) {
+        for (int i = 0; i < fields.size(); i++) setCell(row, i, exportValue(fields.get(i), p, v));
+    }
+
+    private Object exportValue(String key, Product p, ProductVariant v) {
+        return switch (key) {
+            case "productId" -> p.getId(); case "productName" -> p.getName(); case "slug" -> p.getSlug();
+            case "category" -> p.getCategory() == null ? null : p.getCategory().getName();
+            case "shortDescription" -> p.getShortDescription(); case "description" -> p.getDescription();
+            case "basePrice" -> p.getBasePrice(); case "discountedPrice" -> p.getDiscountedPrice();
+            case "isActive" -> p.getIsActive(); case "avgRating" -> p.getAvgRating(); case "reviewCount" -> p.getReviewCount();
+            case "createdAt" -> p.getCreatedAt(); case "updatedAt" -> p.getUpdatedAt();
+            case "variantId" -> v == null ? null : v.getId(); case "variantLabel" -> v == null ? null : v.getVariantLabel();
+            case "sku" -> v == null ? null : v.getSku(); case "size" -> v == null ? null : v.getSize();
+            case "colour" -> v == null ? null : v.getColour(); case "variantPrice" -> v == null ? null : v.getPrice();
+            case "variantDiscountedPrice" -> v == null ? null : v.getDiscountedPrice();
+            case "stockQuantity" -> v == null ? null : v.getStockQuantity(); case "isDefault" -> v == null ? null : v.getIsDefault();
+            case "variantIsActive" -> v == null ? null : v.getIsActive(); default -> null;
+        };
+    }
+
+    private byte[] writeProductsCsv(List<Product> products, List<String> fields) {
+        StringBuilder csv = new StringBuilder("\uFEFF");
+        csv.append(fields.stream().map(EXPORT_FIELDS::get).map(this::csvEscape).collect(java.util.stream.Collectors.joining(","))).append("\r\n");
+        for (Product p : products) {
+            var variants = p.getProductVariants();
+            if (variants == null || variants.isEmpty()) appendCsvRow(csv, p, null, fields);
+            else for (ProductVariant v : variants) appendCsvRow(csv, p, v, fields);
+        }
+        return csv.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private void appendCsvRow(StringBuilder csv, Product p, ProductVariant v, List<String> fields) {
+        for (int i = 0; i < fields.size(); i++) { if (i > 0) csv.append(','); csv.append(csvEscape(exportValue(fields.get(i), p, v))); }
+        csv.append("\r\n");
+    }
+
+    private String csvEscape(Object value) {
+        if (value == null) return "";
+        String text = value.toString();
+        if (text.contains(",") || text.contains("\"") || text.contains("\r") || text.contains("\n")) return "\"" + text.replace("\"", "\"\"") + "\"";
+        return text;
     }
 
     private void setCell(Row row, int columnIndex, Object value) {
-        if (value == null) {
-            return;
-        }
+        if (value == null) return;
         Cell cell = row.createCell(columnIndex);
-        if (value instanceof Number number) {
-            cell.setCellValue(number.doubleValue());
-        } else if (value instanceof Boolean bool) {
-            cell.setCellValue(bool);
-        } else {
-            cell.setCellValue(value.toString());
-        }
+        if (value instanceof Number number) cell.setCellValue(number.doubleValue());
+        else if (value instanceof Boolean bool) cell.setCellValue(bool);
+        else cell.setCellValue(value.toString());
     }
 
     // ============================================================
