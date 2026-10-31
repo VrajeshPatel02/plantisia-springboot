@@ -32,3 +32,14 @@ build/
 
 ### VS Code ###
 .vscode/
+GSD-STYLE.md
+model_capabilities.yaml
+PROJECT_RULES.md
+repomix-output-VrajeshPatel02-plantisia-springboot.md
+/scripts/
+/docs/
+/adapters/
+.gsd 
+.agents
+.agent
+.gemini

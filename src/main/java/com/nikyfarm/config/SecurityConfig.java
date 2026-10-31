@@ -19,7 +19,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -113,6 +112,16 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         http
+                .securityMatcher(
+                        "/admin/login",
+                        "/admin/access-denied",
+                        "/css/**",
+                        "/js/**",
+                        "/images/**",
+                        "/favicon.png",
+                        "/",
+                        "/error",
+                        "/admin/**")
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/admin/login",
@@ -124,7 +133,7 @@ public class SecurityConfig {
                                 "/",
                                 "/error").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .anyRequest().permitAll())
+                        .anyRequest().denyAll())
                 .formLogin(form -> form
                         .loginPage("/admin/login")
                         .loginProcessingUrl("/admin/login")
@@ -188,7 +197,7 @@ public class SecurityConfig {
             return new org.springframework.security.core.userdetails.User(
                     user.getEmail(),
                     user.getPasswordHash(),
-                    Boolean.TRUE.equals(user.getIsActive()),
+                    user.getIsActive(),
                     true,
                     true,
                     true,
@@ -205,7 +214,7 @@ public class SecurityConfig {
                 .filter(origin -> !origin.isBlank())
                 .toList();
 
-        configuration.setAllowedOrigins(origins);
+        configuration.setAllowedOriginPatterns(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
